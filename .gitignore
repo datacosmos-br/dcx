@@ -1,0 +1,57 @@
+# Logs
+logs/
+*.log
+
+# Temp files
+*.swp
+*~
+*.tmp
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# Test artifacts
+tests/tmp/
+tests/*.tmp
+
+# Coverage
+coverage/
+*.gcov
+
+# Cache
+.cache/
+__pycache__/
+
+# Build files
+build/
+release/
+
+# Legacy directories (removed, keep ignored)
+share/
+
+# Binaries (generated, not committed to git)
+# These are created during build/release process
+bin/*-linux-*
+bin/*-darwin-*
+bin/*-windows-*
+bin/gum
+bin/yq
+bin/rg
+bin/fd
+bin/sd
+bin/frawk
+bin/coreutils
+bin/bash
+
+# Keep committed files
+!bin/dcx
+!bin/README.md
+!bin/.gitkeep
+!bin/completions/

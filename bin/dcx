@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+#===============================================================================
+# dcx - dc-scripts CLI wrapper
+#===============================================================================
+# Main entry point for dc-scripts command line interface
+# Selects correct platform binaries and provides CLI commands
+#===============================================================================
+
+set -euo pipefail
+
+# Determine DC_HOME (where dc-scripts is installed)
+if [[ -n "${DC_HOME:-}" ]]; then
+    : # Use provided DC_HOME
+elif [[ -L "${BASH_SOURCE[0]}" ]]; then
+    # Follow symlink to find real location
+    DC_HOME="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+else
+    DC_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+fi
+export DC_HOME
+
+# Add bin to PATH
+export PATH="$DC_HOME/bin:$PATH"
+
+#-------------------------------------------------------------------------------
+# _dcx_platform - Get current platform string
+#-------------------------------------------------------------------------------
+_dcx_platform() {
+    local os arch
+    os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    arch=$(uname -m)
+    case "$arch" in
+        x86_64) arch="amd64" ;;
+        aarch64|arm64) arch="arm64" ;;
+        i386|i686) arch="386" ;;
+    esac
+    echo "${os}-${arch}"
+}
+
+#-------------------------------------------------------------------------------
+# _dcx_select_binary - Select correct binary for platform
+#-------------------------------------------------------------------------------
+_dcx_select_binary() {
+    local name="$1"
+    local platform
+    platform=$(_dcx_platform)
+
+    local bin="$DC_HOME/bin/${name}-${platform}"
+
+    # Try platform-specific binary
+    if [[ -x "$bin" ]]; then
+        echo "$bin"
+        return 0
+    fi
+
+    # Try generic binary (symlink)
+    if [[ -x "$DC_HOME/bin/$name" ]]; then
+        echo "$DC_HOME/bin/$name"
+        return 0
+    fi
+
+    # Fall back to system binary
+    if command -v "$name" &>/dev/null; then
+        command -v "$name"
+        return 0
+    fi
+
+    echo "$name"
+}
+
+# Export binary paths
+# Go tools
+export GUM=$(_dcx_select_binary gum)
+export YQ=$(_dcx_select_binary yq)
+
+# Rust tools (alternatives to GNU utils)
+export RG=$(_dcx_select_binary rg)        # grep alternative
+export FD=$(_dcx_select_binary fd)        # find alternative
+export SD=$(_dcx_select_binary sd)        # sed alternative
+export FRAWK=$(_dcx_select_binary frawk)  # awk alternative
+
+# Coreutils (multicall binary)
+export COREUTILS=$(_dcx_select_binary coreutils)
+
+# Bash (static)
+export BASH_STATIC=$(_dcx_select_binary bash)
+
+#-------------------------------------------------------------------------------
+# Source core library
+#-------------------------------------------------------------------------------
+if [[ -f "$DC_HOME/lib/core.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$DC_HOME/lib/core.sh"
+    dc_init 2>/dev/null || true
+fi
+
+#-------------------------------------------------------------------------------
+# CLI Commands
+#-------------------------------------------------------------------------------
+_dcx_help() {
+    local version
+    version=$(cat "$DC_HOME/VERSION" 2>/dev/null || echo "unknown")
+
+    cat << EOF
+dc-scripts v${version} - Bash library with bundled Go tools
+
+Usage: dcx <command> [options]
+
+Commands:
+  version     Show version information
+  update      Check for and install updates
+  plugin      Manage plugins (list, install, remove)
+  config      Manage configuration
+  help        Show this help message
+
+Environment:
+  DC_HOME     Installation directory (current: $DC_HOME)
+
+For more information: https://github.com/datacosmos-br/dc-scripts
+EOF
+}
+
+_dcx_version() {
+    local version
+    version=$(cat "$DC_HOME/VERSION" 2>/dev/null || echo "unknown")
+    echo "dc-scripts v${version}"
+    echo "Platform: $(_dcx_platform)"
+    echo "DC_HOME: $DC_HOME"
+    echo ""
+    echo "Bundled tools:"
+    # Go tools
+    [[ -x "$GUM" ]] && echo "  gum:       $($GUM --version 2>/dev/null | head -1)" || echo "  gum:       (not found)"
+    [[ -x "$YQ" ]] && echo "  yq:        $($YQ --version 2>/dev/null | head -1)" || echo "  yq:        (not found)"
+    # Rust tools
+    [[ -x "$RG" ]] && echo "  rg:        $($RG --version 2>/dev/null | head -1)" || echo "  rg:        (not found)"
+    [[ -x "$FD" ]] && echo "  fd:        $($FD --version 2>/dev/null | head -1)" || echo "  fd:        (not found)"
+    [[ -x "$SD" ]] && echo "  sd:        $($SD --version 2>/dev/null | head -1)" || echo "  sd:        (not found)"
+    [[ -x "$FRAWK" ]] && echo "  frawk:     $($FRAWK --version 2>/dev/null | head -1)" || echo "  frawk:     (not found)"
+    [[ -x "$COREUTILS" ]] && echo "  coreutils: $($COREUTILS --version 2>/dev/null | head -1)" || echo "  coreutils: (not found)"
+    # Bash
+    [[ -x "$BASH_STATIC" ]] && echo "  bash:      $($BASH_STATIC --version 2>/dev/null | head -1)" || echo "  bash:      (using system)"
+}
+
+_dcx_update() {
+    if [[ -f "$DC_HOME/lib/update.sh" ]]; then
+        # shellcheck source=/dev/null
+        source "$DC_HOME/lib/update.sh"
+        dc_self_update
+    else
+        echo "Update module not available" >&2
+        exit 1
+    fi
+}
+
+_dcx_plugin() {
+    if [[ -f "$DC_HOME/lib/plugin.sh" ]]; then
+        # shellcheck source=/dev/null
+        source "$DC_HOME/lib/plugin.sh"
+        dc_plugin_cmd "$@"
+    else
+        echo "Plugin module not available" >&2
+        exit 1
+    fi
+}
+
+_dcx_config() {
+    if [[ -f "$DC_HOME/lib/config.sh" ]]; then
+        # shellcheck source=/dev/null
+        source "$DC_HOME/lib/config.sh"
+        dc_config_cmd "$@"
+    else
+        echo "Config module not available" >&2
+        exit 1
+    fi
+}
+
+#-------------------------------------------------------------------------------
+# Main
+#-------------------------------------------------------------------------------
+case "${1:-help}" in
+    version|-v|--version)
+        _dcx_version
+        ;;
+    update)
+        shift
+        _dcx_update "$@"
+        ;;
+    plugin)
+        shift
+        _dcx_plugin "$@"
+        ;;
+    config)
+        shift
+        _dcx_config "$@"
+        ;;
+    help|-h|--help)
+        _dcx_help
+        ;;
+    *)
+        echo "Unknown command: $1" >&2
+        echo "Run 'dcx help' for usage" >&2
+        exit 1
+        ;;
+esac

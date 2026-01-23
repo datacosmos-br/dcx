@@ -1,0 +1,26 @@
+# dc-scripts default configuration
+# These values are used when not overridden by user config
+
+# Logging
+log:
+  level: info           # debug, info, warn, error, fatal
+  format: text          # text, json
+  file: ""              # Empty = no file logging
+  color: auto           # auto, always, never
+
+# Parallel execution
+parallel:
+  max_jobs: 4           # Default concurrent jobs
+  timeout: 3600         # Default timeout in seconds
+
+# Updates
+update:
+  check_interval: 86400 # Check every 24 hours (seconds)
+  auto_check: true      # Check for updates on start
+
+# Plugins
+plugins:
+  auto_load: true       # Auto-load discovered plugins
+  dirs:                 # Plugin search directories
+    - "${DC_HOME}/plugins"
+    - "${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/plugins"

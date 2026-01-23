@@ -435,9 +435,11 @@ _rman_check_log_errors() {
 
     # Check for RMAN and ORA errors (excluding expected ones)
     # RMAN-07517: File header corrupted (expected for non-backup files like .log)
+    # RMAN-06169: could not read file header (expected during crosscheck for deleted backups)
     # ORA-01917/ORA-01921: User/role does not exist (expected for grants)
     errors=$(grep -E "^RMAN-[0-9]+:|^ORA-[0-9]+:" "${logfile}" 2>/dev/null \
         | grep -v "RMAN-07517" \
+        | grep -v "RMAN-06169" \
         | grep -v "ORA-01917" \
         | grep -v "ORA-01921" \
         | head -10 || true)
@@ -849,7 +851,13 @@ oracle_rman_print_transformation_plan() {
 #   - Falls back to /tmp if LOGDIR not set
 #   - File format: bash source-able (key="value" per line)
 _rman_state_file() {
-    echo "${LOGDIR:-/tmp}/execution_state.sh"
+    # State no diretório pai (por SID) se LOGDIR tem subdir de sessão
+    local base="${LOGDIR:-/tmp}"
+    # Se LOGDIR termina com /YYYYMMDD_HHMMSS, usa o pai
+    if [[ "${base}" =~ /[0-9]{8}_[0-9]{6}$ ]]; then
+        base="${base%/*}"
+    fi
+    echo "${base}/execution_state.sh"
 }
 
 # _rman_state_load - Load previous execution state

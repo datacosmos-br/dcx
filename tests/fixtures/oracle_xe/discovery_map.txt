@@ -1,0 +1,10 @@
+--DATAFILES--
+1|/usr/lib/oracle/oradata/XE/system.dbf
+2|/usr/lib/oracle/oradata/XE/sysaux.dbf
+3|/usr/lib/oracle/oradata/XE/undotbs1.dbf
+4|/usr/lib/oracle/oradata/XE/users.dbf
+--TEMPFILES--
+1|/usr/lib/oracle/oradata/XE/temp.dbf
+--REDO--
+1|/usr/lib/oracle/fast_recovery_area/XE/onlinelog/o1_mf_1_mrhskzwd_.log
+2|/usr/lib/oracle/fast_recovery_area/XE/onlinelog/o1_mf_2_mrhskzy6_.log

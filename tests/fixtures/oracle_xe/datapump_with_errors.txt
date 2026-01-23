@@ -1,0 +1,23 @@
+Import: Release 11.2.0.2.0 - Production on Thu Jan 15 15:00:00 2026
+
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+
+Connected to: Oracle Database 11g Express Edition Release 11.2.0.2.0 - 64bit Production
+Master table "SYS"."SYS_IMPORT_FULL_01" successfully loaded/unloaded
+Starting "SYS"."SYS_IMPORT_FULL_01":  /******** AS SYSDBA directory=DATA_PUMP_DIR dumpfile=export.dmp full=y
+Processing object type SCHEMA_EXPORT/USER
+ORA-31684: Object type USER:"HR" already exists
+Processing object type SCHEMA_EXPORT/SYSTEM_GRANT
+Processing object type SCHEMA_EXPORT/ROLE_GRANT
+ORA-01917: user or role 'MISSING_ROLE' does not exist
+Processing object type SCHEMA_EXPORT/DEFAULT_ROLE
+Processing object type SCHEMA_EXPORT/TABLE/TABLE
+Processing object type SCHEMA_EXPORT/TABLE/TABLE_DATA
+. . imported "STAGE"."DIM_LOJA"                      1.234 MB   15420 rows
+. . imported "STAGE"."DIM_PRODUTO"                   8.567 MB   98543 rows
+ORA-02291: integrity constraint violated - parent key not found
+. . imported "STAGE"."FACT_VENDAS"                 234.567 MB 1543210 rows
+Processing object type SCHEMA_EXPORT/TABLE/CONSTRAINT/CONSTRAINT
+ORA-02264: name already used by an existing constraint
+Processing object type SCHEMA_EXPORT/TABLE/INDEX/INDEX
+Job "SYS"."SYS_IMPORT_FULL_01" completed with 4 error(s) at Thu Jan 15 15:23:45 2026 elapsed 0 00:23:45

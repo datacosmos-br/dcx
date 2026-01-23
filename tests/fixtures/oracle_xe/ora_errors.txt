@@ -1,0 +1,11 @@
+ORA-01034: ORACLE not available
+ORA-27101: shared memory realm does not exist
+ORA-01555: snapshot too old: rollback segment number 1 with name "_SYSSMU1_1234$" too small
+ORA-00054: resource busy and acquire with NOWAIT specified or timeout expired
+ORA-12154: TNS:could not resolve the connect identifier specified
+ORA-01017: invalid username/password; logon denied
+ORA-01917: user or role 'MISSING_USER' does not exist
+ORA-01921: role name 'MISSING_ROLE' conflicts with another user or role name
+ORA-02019: connection description for remote database not found
+ORA-39171: Job is experiencing a resumable wait.
+ORA-31693: Table data object "SCHEMA"."TABLE" failed to load/unload

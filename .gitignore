@@ -1,0 +1,28 @@
+# Logs
+logs/
+*.log
+
+# Cache
+.fastembed_cache/
+
+# Temp files
+*.swp
+*~
+*.tmp
+
+# OS files
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Local sync script (contains IP addresses)
+sync.sh
+
+# IDE
+.idea/
+.vscode/
+
+# Claude local files
+.claude/

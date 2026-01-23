@@ -1,0 +1,2 @@
+1|/usr/lib/oracle/fast_recovery_area/XE/onlinelog/o1_mf_1_mrhskzwd_.log|INACTIVE|52428800
+2|/usr/lib/oracle/fast_recovery_area/XE/onlinelog/o1_mf_2_mrhskzy6_.log|CURRENT|52428800

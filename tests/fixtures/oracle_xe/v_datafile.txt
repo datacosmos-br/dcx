@@ -1,0 +1,4 @@
+1|/usr/lib/oracle/oradata/XE/system.dbf|SYSTEM|377487360
+2|/usr/lib/oracle/oradata/XE/sysaux.dbf|ONLINE|681574400
+3|/usr/lib/oracle/oradata/XE/undotbs1.dbf|ONLINE|26214400
+4|/usr/lib/oracle/oradata/XE/users.dbf|ONLINE|104857600

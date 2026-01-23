@@ -1,0 +1,1 @@
+1|/usr/lib/oracle/oradata/XE/temp.dbf|ONLINE|20971520

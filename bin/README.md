@@ -1,4 +1,4 @@
-# dc-scripts/bin - Binary Directory
+# DCX/bin - Binary Directory
 
 This directory contains the CLI tools and bundled binaries for dc-scripts.
 

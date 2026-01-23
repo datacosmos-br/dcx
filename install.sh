@@ -6,14 +6,21 @@
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/datacosmos-br/dc-scripts/main/install.sh | bash
-#   ./install.sh [--prefix /custom/path] [--version 0.2.0]
+#   ./install.sh [--prefix /custom/path] [--version 0.0.1]
 #===============================================================================
 
 set -euo pipefail
 
+# Load shared functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/lib/shared.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/lib/shared.sh"
+fi
+
 # Configuration
-NAME="dc-scripts"
-REPO="datacosmos-br/dc-scripts"
+NAME="DCX"
+REPO="datacosmos-br/dcx"
 DEFAULT_PREFIX="${HOME}/.local"
 
 # Parse arguments
@@ -63,18 +70,9 @@ success() { echo -e "${GREEN}[OK]${NC} $*"; }
 #-------------------------------------------------------------------------------
 # Detect platform
 #-------------------------------------------------------------------------------
+# detect_platform - Alias for dc_detect_platform (shared)
 detect_platform() {
-    local os arch
-    os=$(uname -s | tr '[:upper:]' '[:lower:]')
-    arch=$(uname -m)
-
-    case "$arch" in
-        x86_64) arch="amd64" ;;
-        aarch64|arm64) arch="arm64" ;;
-        i386|i686) arch="386" ;;
-    esac
-
-    echo "${os}-${arch}"
+    dc_detect_platform
 }
 
 #-------------------------------------------------------------------------------
@@ -118,27 +116,18 @@ install_local() {
     log "Installing from local directory: $source_dir"
 
     # Create directories
-    mkdir -p "$INSTALL_DIR"/{bin,lib,etc,plugins}
+    dc_create_install_dirs "$INSTALL_DIR"
     mkdir -p "$BIN_DIR"
 
     # Copy files
-    cp -r "${source_dir}/lib/"* "$INSTALL_DIR/lib/" 2>/dev/null || true
-    cp -r "${source_dir}/etc/"* "$INSTALL_DIR/etc/" 2>/dev/null || true
-    cp -r "${source_dir}/bin/"* "$INSTALL_DIR/bin/" 2>/dev/null || true
-    cp "${source_dir}/VERSION" "$INSTALL_DIR/" 2>/dev/null || true
+    dc_copy_install_files "$source_dir" "$INSTALL_DIR"
 
     # Create platform symlinks for binaries
     local platform
     platform=$(detect_platform)
+    dc_setup_binary_symlinks "$INSTALL_DIR" "$platform"
 
-    if [[ -f "$INSTALL_DIR/bin/gum-${platform}" ]]; then
-        ln -sf "gum-${platform}" "$INSTALL_DIR/bin/gum"
-    fi
-    if [[ -f "$INSTALL_DIR/bin/yq-${platform}" ]]; then
-        ln -sf "yq-${platform}" "$INSTALL_DIR/bin/yq"
-    fi
-
-    # Copy dcx to user bin (or create symlink)
+    # Copy dcx to user bin
     if [[ -f "$INSTALL_DIR/bin/dcx" ]]; then
         cp "$INSTALL_DIR/bin/dcx" "$BIN_DIR/dcx"
         chmod +x "$BIN_DIR/dcx"
@@ -186,14 +175,8 @@ install_github() {
     log "Downloading from ${download_url}..."
 
     # Download and extract
-    if command -v curl &>/dev/null; then
-        curl -fsSL "$download_url" -o "$tmp_dir/$download_name"
-    else
-        wget -q "$download_url" -O "$tmp_dir/$download_name"
-    fi
-
-    # Extract
-    tar -xzf "$tmp_dir/$download_name" -C "$tmp_dir"
+    dc_download_file "$download_url" "$tmp_dir/$download_name"
+    dc_extract_tarball "$tmp_dir/$download_name" "$tmp_dir"
 
     # Find extracted directory
     local extracted_dir
@@ -212,8 +195,8 @@ install_github() {
 #-------------------------------------------------------------------------------
 main() {
     echo ""
-    echo "dc-scripts Installer"
-    echo "===================="
+    echo "DCX - Datacosmos Command eXecutor Installer"
+    echo "==========================================="
     echo ""
 
     check_deps
@@ -254,7 +237,7 @@ main() {
     echo "In your scripts:"
     echo ""
     echo "  source ${INSTALL_DIR}/lib/core.sh"
-    echo "  dc_load"
+    echo "  dc_load  # Load DCX library"
     echo ""
 
     # Check if bin is in PATH

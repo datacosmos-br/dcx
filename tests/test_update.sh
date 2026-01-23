@@ -78,7 +78,7 @@ run_test "_dc_detect_platform exists" "type _dc_detect_platform &>/dev/null"
 run_test "_dc_download_and_install exists" "type _dc_download_and_install &>/dev/null"
 
 # Test: dc_current_version reads VERSION file
-run_test "dc_current_version" "[[ \"\$(dc_current_version)\" == \"0.2.0\" ]]"
+run_test "dc_current_version" "[[ \"\$(dc_current_version)\" == \"0.0.1\" ]]"
 
 # Test: dc_current_version returns unknown if no VERSION
 old_dc_home="$DC_HOME"
@@ -118,7 +118,7 @@ unset DC_UPDATE_AUTO_CHECK
 # Test: dc_maybe_check_update checks interval
 tmp_dc_home="/tmp/dc-test-$$"
 mkdir -p "$tmp_dc_home"
-echo "0.2.0" > "$tmp_dc_home/VERSION"
+echo "0.0.1" > "$tmp_dc_home/VERSION"
 DC_HOME="$tmp_dc_home"
 
 # Create recent check file (should skip)

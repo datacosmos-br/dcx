@@ -1,4 +1,4 @@
-# dc-scripts/bin - Binary Directory
+# DCX/bin - Binary Directory
 #
 # This directory contains bundled tools and CLI scripts.
 # Some files are committed to git, others are generated during build/release.

@@ -2,7 +2,6 @@
 #===============================================================================
 # dc-scripts/lib/config.sh - Configuration Management via yq
 #===============================================================================
-# Version: 0.2.0
 # Dependencies: yq (kislyuk/yq - jq wrapper for YAML)
 # License: MIT
 #===============================================================================
@@ -194,7 +193,7 @@ config_to_env() {
         value="${value%\"}"
         value="${value#\"}"
         export "$env_key=$value"
-    done < <(yq -r 'paths(scalars) as $p | "\($p | join("."))=\(getpath($p))"' "$file" 2>/dev/null)
+    done < <(yq -r "paths(scalars) as \$p | \"\(\$p | join(\".\"))=\(getpath(\$p))\"" "$file" 2>/dev/null)
 }
 
 #-------------------------------------------------------------------------------

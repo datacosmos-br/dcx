@@ -55,7 +55,7 @@ run_test "core.sh loads" "true"
 run_test "DC_VERSION is set" "[[ -n \"\${DC_VERSION:-}\" ]]"
 
 # Test: DC_VERSION is correct
-run_test "DC_VERSION is 0.2.0" "[[ \"\${DC_VERSION}\" == \"0.2.0\" ]]"
+run_test "DC_VERSION is set" "[[ \"\${DC_VERSION}\" == \"0.0.1\" ]]"
 
 # Test: dc_init function exists
 run_test "dc_init exists" "type dc_init &>/dev/null"
@@ -79,7 +79,7 @@ run_test "dc_init succeeds" "dc_init"
 run_test "DC_INITIALIZED is set" "[[ \"\${DC_INITIALIZED:-}\" == \"1\" ]]"
 
 # Test: dc_version outputs correct format
-run_test "dc_version output" "[[ \"\$(dc_version)\" == \"dc-scripts v0.2.0\" ]]"
+run_test "dc_version output" "[[ \"\$(dc_version)\" == \"DCX v0.0.1\" ]]"
 
 # Test: dc_require is idempotent
 run_test "dc_require idempotent" "dc_require && dc_require"

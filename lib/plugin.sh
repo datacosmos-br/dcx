@@ -2,7 +2,6 @@
 #===============================================================================
 # dc-scripts/lib/plugin.sh - Plugin Discovery & Loading
 #===============================================================================
-# Version: 0.2.0
 # Dependencies: yq, gum (optional)
 # License: MIT
 #===============================================================================
@@ -133,8 +132,7 @@ dc_load_plugin() {
     local requires_dc
     requires_dc=$(dc_plugin_info "$plugin_dir" "requires.dc-scripts")
     if [[ -n "$requires_dc" ]]; then
-        local current_version="${DC_VERSION:-0.0.0}"
-        # Simple version check (could be improved)
+        # TODO: Implement version check against ${DC_VERSION:-0.0.0}
         # For now, just log it
         :
     fi
@@ -241,8 +239,8 @@ dc_plugin_list() {
 
                 [[ "$first" == "true" ]] || echo ","
                 first=false
-                printf '  {"name": "%s", "version": "%s", "loaded": %s, "path": "%s"}' \
-                    "$name" "$version" "$loaded" "$plugin_dir"
+                printf '  {"name": "%s", "version": "%s", "description": "%s", "loaded": %s, "path": "%s"}' \
+                    "$name" "$version" "$desc" "$loaded" "$plugin_dir"
             done <<< "$plugins"
             echo ""
             echo "]"
@@ -290,7 +288,8 @@ dc_plugin_install() {
     fi
 
     # Determine install directory
-    local dest="${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/plugins/$(basename "$repo")"
+    local dest
+    dest="${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/plugins/$(basename "$repo")"
 
     if [[ -d "$dest" ]]; then
         echo "Plugin already installed: $dest"

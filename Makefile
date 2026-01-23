@@ -1,5 +1,5 @@
 #===============================================================================
-# Makefile - dc-scripts v0.2.0
+# Makefile - DCX
 #===============================================================================
 # Comandos organizados em 4 grupos:
 #   Development: lint, test, check, validate, clean
@@ -14,8 +14,8 @@ SHELL := /bin/bash
 #-------------------------------------------------------------------------------
 # Projeto
 #-------------------------------------------------------------------------------
-NAME := dc-scripts
-REPO := datacosmos-br/dc-scripts
+NAME := DCX
+REPO := datacosmos-br/dcx
 VERSION := $(shell cat VERSION 2>/dev/null || echo "0.0.0")
 
 #-------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ WARN = @printf "$(C_YELLOW)!$(C_RESET) %s\n"
 .PHONY: help
 help:
 	@echo ""
-	@printf "$(C_BOLD)$(NAME) v$(VERSION)$(C_RESET)\n"
+	@printf "$(C_BOLD)$(NAME) v$(VERSION) - Datacosmos Command eXecutor$(C_RESET)\n"
 	@echo ""
 	@printf "$(C_GREEN)Development$(C_RESET)\n"
 	@printf "  $(C_CYAN)lint$(C_RESET)       Shellcheck nos scripts\n"

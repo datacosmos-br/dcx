@@ -1,6 +1,6 @@
-# dc-scripts
+# DCX - Datacosmos Command eXecutor
 
-A comprehensive bash library with bundled tools and CLI interface.
+A comprehensive bash library with bundled tools and CLI interface for enterprise automation workflows.
 
 ## Features
 
@@ -21,13 +21,13 @@ A comprehensive bash library with bundled tools and CLI interface.
 ### One-liner (Recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/datacosmos-br/dc-scripts/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/datacosmos-br/dcx/main/install.sh | bash
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/datacosmos-br/dc-scripts.git
+git clone https://github.com/datacosmos-br/dcx.git
 cd dc-scripts
 make install
 ```
@@ -36,8 +36,8 @@ make install
 
 ```bash
 # Download latest release
-VERSION=0.2.0
-curl -fsSL "https://github.com/datacosmos-br/dc-scripts/releases/download/v${VERSION}/dc-scripts-${VERSION}.tar.gz" | tar xz
+VERSION=0.0.1
+curl -fsSL "https://github.com/datacosmos-br/dcx/releases/download/v${VERSION}/dcx-${VERSION}.tar.gz" | tar xz
 cd dc-scripts-${VERSION}
 ./install.sh
 ```
@@ -347,7 +347,7 @@ dc_self_update "0.2.1"
 dc_check_binaries
 
 # Release notes
-dc_release_notes "0.2.0"
+dc_release_notes "0.0.1"
 ```
 
 ## Configuration
@@ -405,7 +405,7 @@ description: My awesome plugin
 author: Your Name
 
 requires:
-  dc-scripts: ">=0.2.0"
+  dc-scripts: ">=0.0.1"
   commands:
     - sqlplus
     - rman

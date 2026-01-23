@@ -2,7 +2,6 @@
 #===============================================================================
 # dc-scripts/lib/core.sh - Bootstrap, Module System & Plugin Management
 #===============================================================================
-# Version: 0.2.0
 # Dependencies: gum, yq
 # License: MIT
 #===============================================================================
@@ -11,15 +10,13 @@
 [[ -n "${_DC_CORE_LOADED:-}" ]] && return 0
 declare -r _DC_CORE_LOADED=1
 
-# Version
-declare -r DC_VERSION="0.2.0"
+# Version - read from VERSION file
+declare -r DC_VERSION="$(cat "${DC_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/VERSION" 2>/dev/null || echo "unknown")"
 
 # Paths
 declare -g DC_HOME="${DC_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 declare -g DC_LIB_DIR="${DC_HOME}/lib"
-declare -g DC_ETC_DIR="${DC_HOME}/etc"
 declare -g DC_BIN_DIR="${DC_HOME}/bin"
-declare -g DC_PLUGINS_DIR="${DC_HOME}/plugins"
 declare -g DC_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts"
 
 # Module registry (associative arrays)
@@ -110,7 +107,7 @@ dc_require() {
 # dc_version - Print version information
 #-------------------------------------------------------------------------------
 dc_version() {
-    echo "dc-scripts v${DC_VERSION}"
+    echo "DCX v${DC_VERSION}"
 }
 
 #===============================================================================
@@ -123,6 +120,7 @@ dc_version() {
 _dc_register_builtin_modules() {
     # Layer 0: No dependencies
     core_register_module "logging" "$DC_LIB_DIR/logging.sh" ""
+    core_register_module "shared" "$DC_LIB_DIR/shared.sh" ""
 
     # Layer 1: Depends on logging
     core_register_module "runtime" "$DC_LIB_DIR/runtime.sh" "logging"

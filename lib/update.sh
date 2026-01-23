@@ -2,7 +2,6 @@
 #===============================================================================
 # dc-scripts/lib/update.sh - Auto-Update & Version Management
 #===============================================================================
-# Version: 0.2.0
 # Dependencies: curl/wget, gum (optional)
 # License: MIT
 #===============================================================================
@@ -15,7 +14,7 @@ declare -r _DC_UPDATE_LOADED=1
 # CONSTANTS
 #===============================================================================
 
-readonly DC_GITHUB_REPO="datacosmos-br/dc-scripts"
+readonly DC_GITHUB_REPO="datacosmos-br/dcx"
 readonly DC_GITHUB_API="https://api.github.com/repos/${DC_GITHUB_REPO}"
 readonly DC_GITHUB_RELEASES="${DC_GITHUB_API}/releases"
 
@@ -88,20 +87,10 @@ dc_check_update() {
 #===============================================================================
 
 #-------------------------------------------------------------------------------
-# _dc_detect_platform - Detect current platform
+# _dc_detect_platform - Alias for dc_detect_platform (shared)
 #-------------------------------------------------------------------------------
 _dc_detect_platform() {
-    local os arch
-    os=$(uname -s | tr '[:upper:]' '[:lower:]')
-    arch=$(uname -m)
-
-    case "$arch" in
-        x86_64) arch="amd64" ;;
-        aarch64|arm64) arch="arm64" ;;
-        i386|i686) arch="386" ;;
-    esac
-
-    echo "${os}-${arch}"
+    dc_detect_platform
 }
 
 #===============================================================================
@@ -141,13 +130,20 @@ dc_self_update() {
 
     # Confirm update
     local do_update=false
-    if command -v gum &>/dev/null; then
-        if gum confirm "Update from v$current to v$target_version?"; then
-            do_update=true
+    if [[ -t 0 && -t 1 ]]; then
+        # Interactive mode - ask for confirmation
+        if command -v gum &>/dev/null; then
+            if gum confirm "Update from v$current to v$target_version?"; then
+                do_update=true
+            fi
+        else
+            read -r -p "Update from v$current to v$target_version? [y/N] " response
+            [[ "$response" =~ ^[Yy] ]] && do_update=true
         fi
     else
-        read -r -p "Update from v$current to v$target_version? [y/N] " response
-        [[ "$response" =~ ^[Yy] ]] && do_update=true
+        # Non-interactive mode - assume yes
+        echo "Non-interactive mode: proceeding with update..."
+        do_update=true
     fi
 
     if [[ "$do_update" != "true" ]]; then
@@ -200,25 +196,11 @@ _dc_download_and_install() {
 
     # Download
     local download_msg="Downloading update..."
-    if command -v gum &>/dev/null; then
-        gum spin --title "$download_msg" -- \
-            curl -fsSL "$download_url" -o "$tmp_dir/$download_name"
-    else
-        echo "$download_msg"
-        if command -v curl &>/dev/null; then
-            curl -fsSL "$download_url" -o "$tmp_dir/$download_name"
-        else
-            wget -q "$download_url" -O "$tmp_dir/$download_name"
-        fi
-    fi
-
-    if [[ ! -f "$tmp_dir/$download_name" ]]; then
-        echo "Download failed!"
-        return 1
-    fi
+    echo "$download_msg"
+    dc_download_file "$download_url" "$tmp_dir/$download_name"
 
     echo "Extracting..."
-    tar -xzf "$tmp_dir/$download_name" -C "$tmp_dir"
+    dc_extract_tarball "$tmp_dir/$download_name" "$tmp_dir"
 
     # Find extracted directory
     local extracted_dir
@@ -234,7 +216,8 @@ _dc_download_and_install() {
 
     # Backup current installation
     if [[ -d "$dc_home" ]]; then
-        local backup_dir="${dc_home}.backup.$(date +%Y%m%d%H%M%S)"
+        local backup_dir
+        backup_dir="${dc_home}.backup.$(date +%Y%m%d%H%M%S)"
         echo "Backing up to: $backup_dir"
         mv "$dc_home" "$backup_dir"
     fi

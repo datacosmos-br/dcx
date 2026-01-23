@@ -10,6 +10,12 @@
 [[ -n "${_DC_UPDATE_LOADED:-}" ]] && return 0
 declare -r _DC_UPDATE_LOADED=1
 
+# Load shared functions
+if [[ -f "${DC_LIB_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/shared.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "${DC_LIB_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/shared.sh"
+fi
+
 #===============================================================================
 # CONSTANTS
 #===============================================================================
@@ -211,8 +217,7 @@ _dc_download_and_install() {
     fi
 
     # Install
-    local dc_home="${DC_HOME:-$HOME/.local/share/dc-scripts}"
-    echo "Installing to: $dc_home"
+    local dc_home="${DC_HOME:-$HOME/.local/share/DCX}"
 
     # Backup current installation
     if [[ -d "$dc_home" ]]; then
@@ -222,24 +227,7 @@ _dc_download_and_install() {
         mv "$dc_home" "$backup_dir"
     fi
 
-    # Create directory structure
-    mkdir -p "$dc_home"/{bin,lib,etc,plugins}
-
-    # Copy files
-    cp -r "$extracted_dir/lib/"* "$dc_home/lib/" 2>/dev/null || true
-    cp -r "$extracted_dir/etc/"* "$dc_home/etc/" 2>/dev/null || true
-    cp -r "$extracted_dir/bin/"* "$dc_home/bin/" 2>/dev/null || true
-    cp "$extracted_dir/VERSION" "$dc_home/" 2>/dev/null || true
-
-    # Create platform symlinks for binaries
-    for tool in gum yq rg fd sd frawk coreutils bash; do
-        if [[ -f "$dc_home/bin/${tool}-${platform}" ]]; then
-            ln -sf "${tool}-${platform}" "$dc_home/bin/$tool"
-        fi
-    done
-
-    # Make dcx executable
-    chmod +x "$dc_home/bin/dcx" 2>/dev/null || true
+    dc_install_version "$version" "$dc_home" "$DC_GITHUB_REPO"
 
     echo ""
     echo "Successfully updated to v$version!"

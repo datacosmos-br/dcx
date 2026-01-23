@@ -141,53 +141,11 @@ install_local() {
 #-------------------------------------------------------------------------------
 install_github() {
     local version="$1"
-    local platform
-    platform=$(detect_platform)
 
-    log "Installing dc-scripts v${version} for ${platform}..."
+    log "Installing DCX v${version}..."
 
-    local tmp_dir
-    tmp_dir=$(mktemp -d)
-    trap 'rm -rf "$tmp_dir"' EXIT
-
-    # Try platform-specific release first (smaller download)
-    local platform_url="https://github.com/${REPO}/releases/download/v${version}/${NAME}-${version}-${platform}.tar.gz"
-    local full_url="https://github.com/${REPO}/releases/download/v${version}/${NAME}-${version}.tar.gz"
-
-    local download_url=""
-    local download_name=""
-
-    # Check if platform-specific release exists
-    if command -v curl &>/dev/null; then
-        if curl -fsSL --head "$platform_url" &>/dev/null; then
-            download_url="$platform_url"
-            download_name="${NAME}-${version}-${platform}.tar.gz"
-        else
-            download_url="$full_url"
-            download_name="${NAME}-${version}.tar.gz"
-        fi
-    else
-        # Fallback to full release
-        download_url="$full_url"
-        download_name="${NAME}-${version}.tar.gz"
-    fi
-
-    log "Downloading from ${download_url}..."
-
-    # Download and extract
-    dc_download_file "$download_url" "$tmp_dir/$download_name"
-    dc_extract_tarball "$tmp_dir/$download_name" "$tmp_dir"
-
-    # Find extracted directory
-    local extracted_dir
-    extracted_dir=$(find "$tmp_dir" -maxdepth 1 -type d -name "${NAME}-*" | head -1)
-
-    if [[ -z "$extracted_dir" ]]; then
-        # Files might be extracted directly
-        extracted_dir="$tmp_dir"
-    fi
-
-    install_local "$extracted_dir"
+    # Use shared installation function
+    dc_install_version "$version" "$INSTALL_DIR" "$REPO"
 }
 
 #-------------------------------------------------------------------------------

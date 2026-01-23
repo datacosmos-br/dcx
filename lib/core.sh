@@ -11,7 +11,8 @@
 declare -r _DC_CORE_LOADED=1
 
 # Version - read from VERSION file
-declare -r DC_VERSION="$(cat "${DC_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/VERSION" 2>/dev/null || echo "unknown")"
+DC_VERSION="$(cat "${DC_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/VERSION" 2>/dev/null || echo "unknown")"
+declare -r DC_VERSION
 
 # Paths
 declare -g DC_HOME="${DC_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"

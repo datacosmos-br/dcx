@@ -134,7 +134,7 @@ DC_HOME="$old_dc_home"
 rm -rf "$tmp_dc_home"
 
 # Test: Constants have expected values
-run_test "DC_GITHUB_REPO is datacosmos-br/dc-scripts" "[[ \"\$DC_GITHUB_REPO\" == \"datacosmos-br/dc-scripts\" ]]"
+run_test "DC_GITHUB_REPO is datacosmos-br/dcx" "[[ \"\$DC_GITHUB_REPO\" == \"datacosmos-br/dcx\" ]]"
 
 # Test: GitHub API URL is correct
 run_test "DC_GITHUB_API URL format" "[[ \"\$DC_GITHUB_API\" == *'api.github.com'* ]]"

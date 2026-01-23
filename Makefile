@@ -77,8 +77,9 @@ help:
 	@printf "  $(C_CYAN)release$(C_RESET)    Cria tarball para release\n"
 	@printf "  $(C_CYAN)publish$(C_RESET)    Publica no GitHub Releases\n"
 	@echo ""
-	@printf "$(C_GREEN)Install$(C_RESET)\n"
-	@printf "  $(C_CYAN)install$(C_RESET)    Instala em ~/.local\n"
+	@printf "$(C_GREEN)Install/Update$(C_RESET)\n"
+	@printf "  $(C_CYAN)install$(C_RESET)    Instala versão de desenvolvimento\n"
+	@printf "  $(C_CYAN)update$(C_RESET)     Atualiza para última versão estável\n"
 	@printf "  $(C_CYAN)uninstall$(C_RESET)  Remove instalação\n"
 	@echo ""
 
@@ -255,16 +256,16 @@ publish: ## Publica no GitHub
 #===============================================================================
 
 .PHONY: install
-install: ## Instala em ~/.local
-	$(INFO) "Instalando $(NAME) v$(VERSION)..."
-	@mkdir -p $(INSTALL_DIR)/{bin,lib,etc,plugins}
+install: ## Instala versão de desenvolvimento em ~/.local
+	$(INFO) "Instalando $(NAME) v$(VERSION) (desenvolvimento)..."
+	@mkdir -p $(INSTALL_DIR)
 	@mkdir -p $(PREFIX)/bin
 	@# Copia arquivos
-	@cp -r lib/* $(INSTALL_DIR)/lib/
-	@cp -r etc/* $(INSTALL_DIR)/etc/
-	@cp -r bin/completions $(INSTALL_DIR)/bin/ 2>/dev/null || true
-	@cp VERSION $(INSTALL_DIR)/
-	@# Copia dcx
+	@cp -r lib/* $(INSTALL_DIR)/lib/ 2>/dev/null || true
+	@cp -r etc/* $(INSTALL_DIR)/etc/ 2>/dev/null || true
+	@cp -r bin/* $(INSTALL_DIR)/bin/ 2>/dev/null || true
+	@cp VERSION $(INSTALL_DIR)/ 2>/dev/null || true
+	@# Copia dcx para PATH
 	@cp bin/dcx $(PREFIX)/bin/dcx
 	@chmod +x $(PREFIX)/bin/dcx
 	@# Configura DC_HOME
@@ -274,6 +275,12 @@ install: ## Instala em ~/.local
 	@printf "  Adicione ao seu ~/.bashrc ou ~/.zshrc:\n"
 	@printf "    $(C_CYAN)export PATH=\"$(PREFIX)/bin:\$$PATH\"$(C_RESET)\n"
 	@printf "    $(C_CYAN)source $(INSTALL_DIR)/bin/completions/dcx.bash$(C_RESET)\n"
+
+.PHONY: update
+update: ## Atualiza instalação atual para última versão
+	$(INFO) "Atualizando $(NAME)..."
+	@source lib/core.sh && dc_load update && dc_self_update
+	$(OK) "Atualização concluída"
 	@echo ""
 
 .PHONY: uninstall

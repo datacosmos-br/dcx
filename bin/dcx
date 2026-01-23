@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #===============================================================================
-# dcx - dc-scripts CLI wrapper
+# dcx - DCX CLI wrapper
 #===============================================================================
-# Main entry point for dc-scripts command line interface
+# Main entry point for DCX command line interface
 # Selects correct platform binaries and provides CLI commands
 #===============================================================================
 

@@ -119,6 +119,79 @@ dc_extract_tarball() {
 }
 
 #===============================================================================
+# INSTALLATION
+#===============================================================================
+
+#-------------------------------------------------------------------------------
+# dc_install_version - Install a specific version to target directory
+#-------------------------------------------------------------------------------
+dc_install_version() {
+    local version="$1"
+    local target_dir="$2"
+    local repo="${3:-datacosmos-br/dcx}"
+
+    local platform
+    platform=$(dc_detect_platform)
+
+    # Create temp directory
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    trap 'rm -rf "$tmp_dir"' EXIT
+
+    # Determine download URLs
+    local platform_url="https://github.com/${repo}/releases/download/v${version}/dcx-${version}-${platform}.tar.gz"
+    local full_url="https://github.com/${repo}/releases/download/v${version}/dcx-${version}.tar.gz"
+
+    local download_url=""
+    local download_name=""
+
+    dc_log "Detecting best download for ${version}..."
+
+    # Check if platform-specific release exists
+    if command -v curl &>/dev/null; then
+        if curl -fsSL --head "$platform_url" &>/dev/null 2>&1; then
+            download_url="$platform_url"
+            download_name="dcx-${version}-${platform}.tar.gz"
+        else
+            download_url="$full_url"
+            download_name="dcx-${version}.tar.gz"
+        fi
+    else
+        download_url="$full_url"
+        download_name="dcx-${version}.tar.gz"
+    fi
+
+    dc_log "Downloading ${download_name}..."
+    dc_download_file "$download_url" "$tmp_dir/$download_name"
+
+    dc_log "Extracting..."
+    dc_extract_tarball "$tmp_dir/$download_name" "$tmp_dir"
+
+    # Find extracted directory
+    local extracted_dir
+    extracted_dir=$(find "$tmp_dir" -maxdepth 1 -type d -name "dcx-*" | head -1)
+
+    if [[ -z "$extracted_dir" ]]; then
+        # Files might be extracted directly
+        extracted_dir="$tmp_dir"
+    fi
+
+    # Install to target directory
+    dc_log "Installing to ${target_dir}..."
+    dc_create_install_dirs "$target_dir"
+    dc_copy_install_files "$extracted_dir" "$target_dir"
+    dc_setup_binary_symlinks "$target_dir" "$platform"
+
+    # Copy default config if it doesn't exist
+    if [[ ! -f "$target_dir/etc/defaults.yaml" ]] && [[ -f "$extracted_dir/etc/defaults.yaml" ]]; then
+        mkdir -p "$target_dir/etc"
+        cp "$extracted_dir/etc/defaults.yaml" "$target_dir/etc/"
+    fi
+
+    dc_log "Installation complete: ${target_dir}"
+}
+
+#===============================================================================
 # UTILITY FUNCTIONS
 #===============================================================================
 

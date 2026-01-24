@@ -285,7 +285,8 @@ deploy: ## Commit, build, release e publish em um comando
 	@./scripts/build.sh all
 	@# 4. Run tests
 	$(INFO) "Rodando testes..."
-	@bash tests/run_all_tests.sh >/dev/null && $(OK) "Testes OK" || { $(WARN) "Testes falharam"; exit 1; }
+	@bash tests/run_all_tests.sh >/dev/null
+	$(OK) "Testes OK"
 	@# 5. Create release tarball
 	$(INFO) "Criando release..."
 	@mkdir -p $(RELEASE_DIR)

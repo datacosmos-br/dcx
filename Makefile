@@ -1,21 +1,32 @@
 #===============================================================================
 # Makefile - DCX
 #===============================================================================
-# Comandos organizados em 4 grupos:
+# Comandos organizados em 5 grupos:
 #   Development: lint, test, check, validate, clean
 #   Versioning:  version, bump-patch, bump-minor, bump-major
 #   Release:     release, publish
-#   Install:     install, uninstall
+#   Install:     install, uninstall, update
+#   Binaries:    binaries, binaries-all
 #===============================================================================
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 #-------------------------------------------------------------------------------
-# Projeto
+# Project Constants (read from etc/project.yaml via yq)
 #-------------------------------------------------------------------------------
-NAME := DCX
-REPO := datacosmos-br/dcx
+# Detect yq: bundled first, then system
+YQ := $(shell test -x bin/yq && echo bin/yq || (command -v yq >/dev/null 2>&1 && echo yq || echo ""))
+
+# Read from YAML with fallbacks
+ifneq ($(YQ),)
+  NAME := $(shell $(YQ) -r '.project.name // "DCX"' etc/project.yaml 2>/dev/null || echo "DCX")
+  REPO := $(shell $(YQ) -r '.project.repo // "datacosmos-br/dcx"' etc/project.yaml 2>/dev/null || echo "datacosmos-br/dcx")
+else
+  NAME := DCX
+  REPO := datacosmos-br/dcx
+endif
+
 VERSION := $(shell cat VERSION 2>/dev/null || echo "0.0.0")
 
 #-------------------------------------------------------------------------------
@@ -27,13 +38,17 @@ BIN_DIR     := bin
 RELEASE_DIR := release
 
 #-------------------------------------------------------------------------------
-# Tool Versions (para builds)
+# Platform Detection
 #-------------------------------------------------------------------------------
-GUM_VERSION      := 0.14.5
-YQ_VERSION       := 4.44.3
-RIPGREP_VERSION  := 14.1.1
-FD_VERSION       := 10.2.0
-SD_VERSION       := 1.0.0
+OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+ARCH := $(shell uname -m)
+ifeq ($(ARCH),x86_64)
+  ARCH := amd64
+endif
+ifeq ($(ARCH),aarch64)
+  ARCH := arm64
+endif
+PLATFORM := $(OS)-$(ARCH)
 
 #-------------------------------------------------------------------------------
 # Cores (ANSI)
@@ -76,6 +91,11 @@ help:
 	@printf "$(C_GREEN)Release$(C_RESET)\n"
 	@printf "  $(C_CYAN)release$(C_RESET)    Cria tarball para release\n"
 	@printf "  $(C_CYAN)publish$(C_RESET)    Publica no GitHub Releases\n"
+	@echo ""
+	@printf "$(C_GREEN)Binaries$(C_RESET)\n"
+	@printf "  $(C_CYAN)binaries$(C_RESET)      Baixa binários para plataforma atual ($(PLATFORM))\n"
+	@printf "  $(C_CYAN)binaries-all$(C_RESET)  Baixa binários para todas plataformas\n"
+	@printf "  $(C_CYAN)binaries-required$(C_RESET) Baixa apenas gum e yq\n"
 	@echo ""
 	@printf "$(C_GREEN)Install/Update$(C_RESET)\n"
 	@printf "  $(C_CYAN)install$(C_RESET)    Instala versão de desenvolvimento\n"
@@ -221,8 +241,9 @@ release: validate changelog ## Cria release tarball
 		--exclude='.git' \
 		--exclude='*.tar.gz' \
 		--exclude='build' \
-		lib/ etc/ plugins/ share/ tests/ \
-		bin/dcx VERSION README.md Makefile install.sh \
+		--exclude='bin/dcx-go' \
+		lib/ etc/ plugins/ share/ tests/ bin/ \
+		VERSION README.md Makefile install.sh \
 		2>/dev/null
 	@cd $(RELEASE_DIR) && sha256sum $(NAME)-$(VERSION).tar.gz > $(NAME)-$(VERSION).sha256
 	$(OK) "$(RELEASE_DIR)/$(NAME)-$(VERSION).tar.gz"
@@ -252,19 +273,55 @@ publish: ## Publica no GitHub
 	$(OK) "Publicado: https://github.com/$(REPO)/releases/tag/v$(VERSION)"
 
 #===============================================================================
+# BINARIES
+#===============================================================================
+
+.PHONY: binaries
+binaries: ## Baixa binários para plataforma atual
+	$(INFO) "Baixando binários para $(PLATFORM)..."
+	@./scripts/build-binaries.sh all
+	$(OK) "Binários instalados em $(BIN_DIR)/"
+
+.PHONY: binaries-all
+binaries-all: ## Baixa binários para todas plataformas
+	$(INFO) "Baixando binários para todas plataformas..."
+	@./scripts/build-binaries.sh --all-platforms all
+	$(OK) "Binários instalados"
+
+.PHONY: binaries-required
+binaries-required: ## Baixa apenas gum e yq
+	$(INFO) "Baixando gum e yq para $(PLATFORM)..."
+	@./scripts/build-binaries.sh required
+	$(OK) "Binários essenciais instalados"
+
+.PHONY: binaries-check
+binaries-check: ## Verifica binários presentes
+	@./scripts/build-binaries.sh check
+
+#===============================================================================
 # INSTALL
 #===============================================================================
 
 .PHONY: install
 install: ## Instala versão de desenvolvimento em ~/.local
 	$(INFO) "Instalando $(NAME) v$(VERSION) (desenvolvimento)..."
-	@mkdir -p $(INSTALL_DIR)
+	@mkdir -p $(INSTALL_DIR)/{lib,etc,bin,plugins,share/completions}
 	@mkdir -p $(PREFIX)/bin
 	@# Copia arquivos
 	@cp -r lib/* $(INSTALL_DIR)/lib/ 2>/dev/null || true
 	@cp -r etc/* $(INSTALL_DIR)/etc/ 2>/dev/null || true
-	@cp -r bin/* $(INSTALL_DIR)/bin/ 2>/dev/null || true
 	@cp VERSION $(INSTALL_DIR)/ 2>/dev/null || true
+	@# Copia binários (se existirem)
+	@for tool in gum yq rg fd sd; do \
+		if [ -f "$(BIN_DIR)/$${tool}-$(PLATFORM)" ]; then \
+			cp "$(BIN_DIR)/$${tool}-$(PLATFORM)" "$(INSTALL_DIR)/bin/"; \
+			ln -sf "$${tool}-$(PLATFORM)" "$(INSTALL_DIR)/bin/$${tool}"; \
+		elif [ -f "$(BIN_DIR)/$${tool}" ]; then \
+			cp "$(BIN_DIR)/$${tool}" "$(INSTALL_DIR)/bin/"; \
+		fi; \
+	done
+	@# Copia completions
+	@cp -r bin/completions $(INSTALL_DIR)/bin/ 2>/dev/null || true
 	@# Copia dcx para PATH
 	@cp bin/dcx $(PREFIX)/bin/dcx
 	@chmod +x $(PREFIX)/bin/dcx
@@ -279,7 +336,7 @@ install: ## Instala versão de desenvolvimento em ~/.local
 .PHONY: update
 update: ## Atualiza instalação atual para última versão
 	$(INFO) "Atualizando $(NAME)..."
-	@source lib/core.sh && dc_load update && dc_self_update
+	@bash -c 'source lib/constants.sh && source lib/update.sh && dc_self_update'
 	$(OK) "Atualização concluída"
 	@echo ""
 

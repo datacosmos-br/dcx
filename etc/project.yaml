@@ -1,0 +1,32 @@
+# DCX Project Configuration
+# Single source of truth for project constants
+# Used by: lib/constants.sh, Makefile, scripts/build-binaries.sh
+
+project:
+  name: DCX
+  full_name: "Datacosmos Command eXecutor"
+  repo: datacosmos-br/dc-scripts
+  description: "A comprehensive bash library with bundled tools and CLI interface"
+
+# Tool versions for bundled binaries
+tools:
+  go:
+    gum: "0.14.5"
+    yq: "4.44.3"
+  rust:
+    rg: "14.1.1"      # ripgrep
+    fd: "10.2.0"      # fd-find
+    sd: "1.0.0"       # sd
+
+# Supported platforms for cross-compilation
+platforms:
+  - linux-amd64
+  - linux-arm64
+  - darwin-amd64
+  - darwin-arm64
+
+# Installation paths
+paths:
+  prefix: "${HOME}/.local"
+  share: "${prefix}/share/DCX"
+  bin: "${prefix}/bin"

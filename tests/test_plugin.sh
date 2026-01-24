@@ -2,46 +2,17 @@
 #===============================================================================
 # test_plugin.sh - Tests for lib/plugin.sh
 #===============================================================================
-
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 
-# Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LIB_DIR="${SCRIPT_DIR}/../lib"
-PROJECT_DIR="${SCRIPT_DIR}/.."
+echo "Testing plugin.sh..."
+echo ""
 
-# Test counters
-TESTS_RUN=0
-TESTS_PASSED=0
-TESTS_FAILED=0
+# Set DC_HOME for tests
+export DC_HOME="${LIB_DIR}/.."
 
 # Test plugin directory
 TEST_PLUGIN_DIR="/tmp/dc-test-plugin-$$"
-
-#-------------------------------------------------------------------------------
-# Test helpers
-#-------------------------------------------------------------------------------
-test_pass() {
-    TESTS_PASSED=$((TESTS_PASSED + 1))
-    echo "  ✓ $1"
-}
-
-test_fail() {
-    TESTS_FAILED=$((TESTS_FAILED + 1))
-    echo "  ✗ $1"
-}
-
-run_test() {
-    local name="$1"
-    local cmd="$2"
-    TESTS_RUN=$((TESTS_RUN + 1))
-
-    if eval "$cmd" &>/dev/null; then
-        test_pass "$name"
-    else
-        test_fail "$name"
-    fi
-}
 
 #-------------------------------------------------------------------------------
 # Setup - Create mock plugin for testing
@@ -50,7 +21,6 @@ setup_test_plugin() {
     mkdir -p "$TEST_PLUGIN_DIR/test-plugin/lib"
     mkdir -p "$TEST_PLUGIN_DIR/test-plugin/bin"
 
-    # Create simple plugin.yaml (no requires to avoid yq parsing issues)
     cat > "$TEST_PLUGIN_DIR/test-plugin/plugin.yaml" << 'EOF'
 name: test-plugin
 version: 1.0.0
@@ -58,13 +28,11 @@ description: A test plugin for unit testing
 author: Test Author
 EOF
 
-    # Create init.sh
     cat > "$TEST_PLUGIN_DIR/test-plugin/lib/init.sh" << 'EOF'
 #!/usr/bin/env bash
 export TEST_PLUGIN_LOADED=1
 EOF
 
-    # Create a second plugin for multi-plugin tests
     mkdir -p "$TEST_PLUGIN_DIR/another-plugin"
     cat > "$TEST_PLUGIN_DIR/another-plugin/plugin.yaml" << 'EOF'
 name: another-plugin
@@ -73,7 +41,6 @@ description: Another test plugin
 author: Test Author
 EOF
 
-    # Create a plugin with .yml extension
     mkdir -p "$TEST_PLUGIN_DIR/yml-plugin"
     cat > "$TEST_PLUGIN_DIR/yml-plugin/plugin.yml" << 'EOF'
 name: yml-plugin
@@ -82,32 +49,17 @@ description: Plugin with .yml extension
 EOF
 }
 
-#-------------------------------------------------------------------------------
-# Cleanup
-#-------------------------------------------------------------------------------
 cleanup_test_plugin() {
     [[ -n "$TEST_PLUGIN_DIR" && -d "$TEST_PLUGIN_DIR" ]] && rm -rf "$TEST_PLUGIN_DIR"
 }
 
-# Ensure cleanup on exit
 trap cleanup_test_plugin EXIT
-
-#-------------------------------------------------------------------------------
-# Tests
-#-------------------------------------------------------------------------------
-echo "Testing plugin.sh..."
-echo ""
-
-# Set DC_HOME for tests
-export DC_HOME="$PROJECT_DIR"
 
 # Source plugin.sh
 source "${LIB_DIR}/plugin.sh"
 
 # Test: Module loads without error
 run_test "plugin.sh loads" "true"
-
-# Test: Guard variable set
 run_test "_DC_PLUGIN_LOADED set" "[[ -n \"\${_DC_PLUGIN_LOADED:-}\" ]]"
 
 # Test: Global arrays exist
@@ -175,7 +127,7 @@ run_test "Plugin init.sh executed" "[[ \"\${TEST_PLUGIN_LOADED:-}\" == \"1\" ]]"
 # Test: Plugin version cached
 run_test "Plugin version cached" "[[ \"\${_DC_PLUGIN_CACHE[test-plugin]}\" == \"1.0.0\" ]]"
 
-# Test: dc_load_plugin is idempotent (second call returns 0)
+# Test: dc_load_plugin is idempotent
 run_test "dc_load_plugin idempotent" "dc_load_plugin \"$TEST_PLUGIN_DIR/test-plugin\""
 
 # Test: dc_unload_plugin works
@@ -227,12 +179,12 @@ run_test "dc_plugin_cmd load works" "[[ \"\$load_output\" == *'Loaded'* ]]"
 if dc_plugin_cmd load nonexistent &>/dev/null; then _load_nonexist_ok=1; else _load_nonexist_ok=0; fi
 run_test "dc_plugin_cmd load fails for nonexistent" "[[ \$_load_nonexist_ok -eq 0 ]]"
 
-# Test: dc_plugin_install fails without repo argument (returns 1)
+# Test: dc_plugin_install fails without repo argument
 _install_ok=0
 ( dc_plugin_install ) &>/dev/null || _install_ok=1
 run_test "dc_plugin_install fails without arg" "[[ \$_install_ok -eq 1 ]]"
 
-# Test: dc_plugin_remove fails without argument (returns 1)
+# Test: dc_plugin_remove fails without argument
 _remove_ok=0
 ( dc_plugin_remove ) &>/dev/null || _remove_ok=1
 run_test "dc_plugin_remove fails without arg" "[[ \$_remove_ok -eq 1 ]]"
@@ -249,17 +201,4 @@ run_test "dc_load_all_plugins loads test-plugin" "[[ -n \"\${_DC_LOADED_PLUGINS[
 run_test "dc_load_all_plugins loads another-plugin" "[[ -n \"\${_DC_LOADED_PLUGINS[another-plugin]:-}\" ]]"
 run_test "dc_load_all_plugins loads yml-plugin" "[[ -n \"\${_DC_LOADED_PLUGINS[yml-plugin]:-}\" ]]"
 
-#-------------------------------------------------------------------------------
-# Summary
-#-------------------------------------------------------------------------------
-echo ""
-echo "----------------------------------------"
-echo "Tests: ${TESTS_RUN} | Passed: ${TESTS_PASSED} | Failed: ${TESTS_FAILED}"
-
-if [[ $TESTS_FAILED -eq 0 ]]; then
-    echo "All tests passed!"
-    exit 0
-else
-    echo "Some tests failed."
-    exit 1
-fi
+test_summary

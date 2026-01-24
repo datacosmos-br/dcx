@@ -93,8 +93,9 @@ _dc_log_text() {
     local level="$1" message="$2" func="$3" file="$4" line="$5"
 
     # Use gum if available for better formatting
-    if command -v gum &>/dev/null && [[ "$DC_LOG_COLOR" != "never" ]]; then
-        gum log --level "$level" "$message"
+    local gum_bin="${GUM:-gum}"
+    if command -v "$gum_bin" &>/dev/null && [[ "$DC_LOG_COLOR" != "never" ]]; then
+        "$gum_bin" log --level "$level" "$message"
     else
         local timestamp
         timestamp=$(date '+%H:%M:%S')
@@ -210,9 +211,10 @@ log_init_file() {
 log_phase() {
     local phase="$1"
     local description="${2:-}"
+    local gum_bin="${GUM:-gum}"
 
-    if command -v gum &>/dev/null; then
-        gum style --bold --foreground 212 "=== Phase: $phase ==="
+    if command -v "$gum_bin" &>/dev/null; then
+        "$gum_bin" style --bold --foreground 212 "=== Phase: $phase ==="
         [[ -n "$description" ]] && echo "    $description"
     else
         echo "=== Phase: $phase ==="

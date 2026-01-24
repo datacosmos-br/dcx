@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 #===============================================================================
-# test_helpers.sh - Shared test utilities
+# test_helpers.sh - Framework de testes unificado
+#===============================================================================
+# Source este arquivo no início de cada teste:
+#   source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 #===============================================================================
 
-# Initialize counters
+# Paths (disponíveis para todos os testes)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="${SCRIPT_DIR}/../lib"
+
+# Contadores globais
 TESTS_RUN=0
 TESTS_PASSED=0
 TESTS_FAILED=0
@@ -112,6 +119,25 @@ assert_false() {
 #-------------------------------------------------------------------------------
 # Test lifecycle
 #-------------------------------------------------------------------------------
+
+# Setup temp dir com cleanup automático
+test_setup() {
+    TMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TMP_DIR"' EXIT
+}
+
+# Assertions de arquivo
+assert_file() {
+    local file="$1"
+    local msg="${2:-File exists: $file}"
+    [[ -f "$file" ]] && test_pass "$msg" || test_fail "$msg"
+}
+
+assert_dir() {
+    local dir="$1"
+    local msg="${2:-Dir exists: $dir}"
+    [[ -d "$dir" ]] && test_pass "$msg" || test_fail "$msg"
+}
 
 test_summary() {
     echo ""

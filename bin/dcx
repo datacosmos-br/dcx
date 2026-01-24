@@ -2,159 +2,58 @@
 #===============================================================================
 # dcx - DCX CLI wrapper
 #===============================================================================
-# Main entry point for DCX command line interface
-# Selects correct platform binaries and provides CLI commands
+# Thin shell wrapper that delegates to Go binary for most commands
+# and provides shell-specific functionality (plugin loading, etc.)
 #===============================================================================
 
 set -euo pipefail
 
-# Determine DC_HOME (where dc-scripts is installed)
+# Determine DC_HOME
 if [[ -n "${DC_HOME:-}" ]]; then
     : # Use provided DC_HOME
 elif [[ -L "${BASH_SOURCE[0]}" ]]; then
-    # Follow symlink to find real location
     DC_HOME="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 else
     DC_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fi
 export DC_HOME
 
-# Add bin to PATH
-export PATH="$DC_HOME/bin:$PATH"
-
-#-------------------------------------------------------------------------------
-# _dcx_platform - Get current platform string
-#-------------------------------------------------------------------------------
-_dcx_platform() {
-    local os arch
-    os=$(uname -s | tr '[:upper:]' '[:lower:]')
-    arch=$(uname -m)
-    case "$arch" in
-        x86_64) arch="amd64" ;;
-        aarch64|arm64) arch="arm64" ;;
-        i386|i686) arch="386" ;;
-    esac
-    echo "${os}-${arch}"
-}
-
-#-------------------------------------------------------------------------------
-# _dcx_select_binary - Select correct binary for platform
-#-------------------------------------------------------------------------------
-_dcx_select_binary() {
-    local name="$1"
+# Find Go binary
+_dcx_go_binary() {
     local platform
-    platform=$(_dcx_platform)
+    platform="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
 
-    local bin="$DC_HOME/bin/${name}-${platform}"
+    # 1. Development: binary in same dir as wrapper
+    [[ -x "$DC_HOME/bin/dcx-${platform}" ]] && echo "$DC_HOME/bin/dcx-${platform}" && return 0
 
-    # Try platform-specific binary
-    if [[ -x "$bin" ]]; then
-        echo "$bin"
-        return 0
-    fi
+    # 2. Installed: binary in share/DCX/bin/
+    [[ -x "$DC_HOME/share/DCX/bin/dcx-${platform}" ]] && echo "$DC_HOME/share/DCX/bin/dcx-${platform}" && return 0
 
-    # Try generic binary (symlink)
-    if [[ -x "$DC_HOME/bin/$name" ]]; then
-        echo "$DC_HOME/bin/$name"
-        return 0
-    fi
+    # 3. Fallback: symlink dcx-go
+    [[ -x "$DC_HOME/bin/dcx-go" ]] && echo "$DC_HOME/bin/dcx-go" && return 0
 
-    # Fall back to system binary
-    if command -v "$name" &>/dev/null; then
-        command -v "$name"
-        return 0
-    fi
-
-    echo "$name"
+    return 1
 }
 
-# Export binary paths
-# Go tools
-export GUM=$(_dcx_select_binary gum)
-export YQ=$(_dcx_select_binary yq)
+DCX_GO=$(_dcx_go_binary 2>/dev/null || echo "")
 
-# Rust tools (alternatives to GNU utils)
-export RG=$(_dcx_select_binary rg)        # grep alternative
-export FD=$(_dcx_select_binary fd)        # find alternative
-export SD=$(_dcx_select_binary sd)        # sed alternative
-export FRAWK=$(_dcx_select_binary frawk)  # awk alternative
-
-# Coreutils (multicall binary)
-export COREUTILS=$(_dcx_select_binary coreutils)
-
-# Bash (static)
-export BASH_STATIC=$(_dcx_select_binary bash)
-
-#-------------------------------------------------------------------------------
-# Source core library
-#-------------------------------------------------------------------------------
-if [[ -f "$DC_HOME/lib/core.sh" ]]; then
-    # shellcheck source=/dev/null
-    source "$DC_HOME/lib/core.sh"
-    dc_init 2>/dev/null || true
+# Export binary paths (use Go binary if available)
+if [[ -n "$DCX_GO" ]]; then
+    export GUM=$("$DCX_GO" binary find gum 2>/dev/null || echo "gum")
+    export YQ=$("$DCX_GO" binary find yq 2>/dev/null || echo "yq")
+    export RG=$("$DCX_GO" binary find rg 2>/dev/null || echo "rg")
+    export FD=$("$DCX_GO" binary find fd 2>/dev/null || echo "fd")
+    export SD=$("$DCX_GO" binary find sd 2>/dev/null || echo "sd")
+    export SG=$("$DCX_GO" binary find sg 2>/dev/null || echo "sg")
 fi
 
 #-------------------------------------------------------------------------------
-# CLI Commands
+# Shell-specific commands (need shell for sourcing, plugin loading, etc.)
 #-------------------------------------------------------------------------------
-_dcx_help() {
-    local version
-    version=$(cat "$DC_HOME/VERSION" 2>/dev/null || echo "unknown")
-
-    cat << EOF
-DCX v${version} - Datacosmos Command eXecutor
-
-Usage: dcx <command> [options]
-
-Commands:
-  version     Show version information
-  update      Check for and install updates
-  plugin      Manage plugins (list, install, remove)
-  config      Manage configuration
-  help        Show this help message
-
-Environment:
-  DC_HOME     Installation directory (current: $DC_HOME)
-
-For more information: https://github.com/datacosmos-br/dc-scripts
-EOF
-}
-
-_dcx_version() {
-    local version
-    version=$(cat "$DC_HOME/VERSION" 2>/dev/null || echo "unknown")
-    echo "DCX v${version} - Datacosmos Command eXecutor"
-    echo "Platform: $(_dcx_platform)"
-    echo "DC_HOME: $DC_HOME"
-    echo ""
-    echo "Bundled tools:"
-    # Go tools
-    [[ -x "$GUM" ]] && echo "  gum:       $($GUM --version 2>/dev/null | head -1)" || echo "  gum:       (not found)"
-    [[ -x "$YQ" ]] && echo "  yq:        $($YQ --version 2>/dev/null | head -1)" || echo "  yq:        (not found)"
-    # Rust tools
-    [[ -x "$RG" ]] && echo "  rg:        $($RG --version 2>/dev/null | head -1)" || echo "  rg:        (not found)"
-    [[ -x "$FD" ]] && echo "  fd:        $($FD --version 2>/dev/null | head -1)" || echo "  fd:        (not found)"
-    [[ -x "$SD" ]] && echo "  sd:        $($SD --version 2>/dev/null | head -1)" || echo "  sd:        (not found)"
-    [[ -x "$FRAWK" ]] && echo "  frawk:     $($FRAWK --version 2>/dev/null | head -1)" || echo "  frawk:     (not found)"
-    [[ -x "$COREUTILS" ]] && echo "  coreutils: $($COREUTILS --version 2>/dev/null | head -1)" || echo "  coreutils: (not found)"
-    # Bash
-    [[ -x "$BASH_STATIC" ]] && echo "  bash:      $($BASH_STATIC --version 2>/dev/null | head -1)" || echo "  bash:      (using system)"
-}
-
-_dcx_update() {
-    if [[ -f "$DC_HOME/lib/update.sh" ]]; then
-        # shellcheck source=/dev/null
-        source "$DC_HOME/lib/update.sh"
-        dc_self_update
-    else
-        echo "Update module not available" >&2
-        exit 1
-    fi
-}
 
 _dcx_plugin() {
     if [[ -f "$DC_HOME/lib/plugin.sh" ]]; then
-        # shellcheck source=/dev/null
+        source "$DC_HOME/lib/core.sh" 2>/dev/null || true
         source "$DC_HOME/lib/plugin.sh"
         dc_plugin_cmd "$@"
     else
@@ -163,42 +62,60 @@ _dcx_plugin() {
     fi
 }
 
-_dcx_config() {
-    if [[ -f "$DC_HOME/lib/config.sh" ]]; then
-        # shellcheck source=/dev/null
-        source "$DC_HOME/lib/config.sh"
-        dc_config_cmd "$@"
-    else
-        echo "Config module not available" >&2
-        exit 1
-    fi
+_dcx_shell_help() {
+    cat << 'EOF'
+DCX Shell Commands (require bash):
+  plugin      Manage plugins (list, install, remove, load)
+  source      Source a DCX library in current shell
+  env         Print environment for shell eval
+
+All other commands are handled by the Go binary.
+Run 'dcx help' for full command list.
+EOF
 }
 
 #-------------------------------------------------------------------------------
-# Main
+# Main router
 #-------------------------------------------------------------------------------
+
 case "${1:-help}" in
-    version|-v|--version)
-        _dcx_version
-        ;;
-    update)
-        shift
-        _dcx_update "$@"
-        ;;
+    # Shell-specific commands
     plugin)
         shift
         _dcx_plugin "$@"
         ;;
-    config)
+
+    source)
+        # For sourcing in user scripts: eval "$(dcx source)"
         shift
-        _dcx_config "$@"
+        echo "source '$DC_HOME/lib/core.sh'"
+        for lib in "$@"; do
+            echo "core_load $lib"
+        done
         ;;
-    help|-h|--help)
-        _dcx_help
+
+    env)
+        # For shell eval: eval "$(dcx env)"
+        echo "export DC_HOME='$DC_HOME'"
+        echo "export GUM='${GUM:-}'"
+        echo "export YQ='${YQ:-}'"
+        echo "export RG='${RG:-}'"
+        echo "export FD='${FD:-}'"
+        echo "export SD='${SD:-}'"
+        echo "export SG='${SG:-}'"
         ;;
+
+    shell-help)
+        _dcx_shell_help
+        ;;
+
+    # Delegate everything else to Go binary
     *)
-        echo "Unknown command: $1" >&2
-        echo "Run 'dcx help' for usage" >&2
-        exit 1
+        if [[ -n "$DCX_GO" ]]; then
+            exec "$DCX_GO" "$@"
+        else
+            echo "ERROR: Go binary not found. Run 'scripts/build.sh' first." >&2
+            exit 1
+        fi
         ;;
 esac

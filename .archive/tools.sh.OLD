@@ -1,0 +1,422 @@
+#!/usr/bin/env bash
+#===============================================================================
+# dc-scripts/lib/tools.sh - Bundled Tools Download & Management
+#===============================================================================
+# Downloads tools from GitHub releases automatically
+# Config: etc/tools.yaml
+#===============================================================================
+
+# Prevent multiple sourcing
+[[ -n "${_DC_TOOLS_LOADED:-}" ]] && return 0
+declare -r _DC_TOOLS_LOADED=1
+
+# Load constants if not already loaded (for dc_detect_platform)
+if [[ -z "${_DC_CONSTANTS_LOADED:-}" ]]; then
+    # shellcheck source=constants.sh
+    source "${BASH_SOURCE[0]%/*}/constants.sh"
+fi
+
+#===============================================================================
+# CONFIGURATION
+#===============================================================================
+
+DC_TOOLS_CONFIG="${DC_ETC_DIR:-${DC_HOME}/etc}/tools.yaml"
+DC_TOOLS_CACHE="${DC_HOME}/cache"
+
+#===============================================================================
+# INTERNAL HELPERS
+#===============================================================================
+
+#-------------------------------------------------------------------------------
+# _dc_tools_yq - Get yq binary (bootstrap: try system yq first)
+#-------------------------------------------------------------------------------
+_dc_tools_yq() {
+    # For bootstrap: try bundled first, then system
+    [[ -x "$DC_BIN_DIR/yq" ]] && echo "$DC_BIN_DIR/yq" && return 0
+    local platform="${DC_PLATFORM:-$(dc_detect_platform)}"
+    [[ -x "$DC_BIN_DIR/yq-${platform}" ]] && echo "$DC_BIN_DIR/yq-${platform}" && return 0
+    command -v yq 2>/dev/null && return 0
+    return 1
+}
+
+#-------------------------------------------------------------------------------
+# _dc_tools_get_config - Get tool config value
+#-------------------------------------------------------------------------------
+_dc_tools_get_config() {
+    local tool="$1"
+    local field="$2"
+    local yq
+    yq=$(_dc_tools_yq) || return 1
+    "$yq" -r ".tools.${tool}.${field} // \"\"" "$DC_TOOLS_CONFIG" 2>/dev/null
+}
+
+#-------------------------------------------------------------------------------
+# _dc_tools_get_url - Get download URL for tool and platform
+#-------------------------------------------------------------------------------
+_dc_tools_get_url() {
+    local tool="$1"
+    local platform="${2:-$DC_PLATFORM}"
+    local version
+    version=$(_dc_tools_get_config "$tool" "version") || return 1
+
+    local yq
+    yq=$(_dc_tools_yq) || return 1
+
+    local url
+    url=$("$yq" -r ".tools.${tool}.urls.\"${platform}\" // \"\"" "$DC_TOOLS_CONFIG" 2>/dev/null)
+    [[ -z "$url" ]] && return 1
+
+    # Replace {version} placeholder
+    echo "${url//\{version\}/$version}"
+}
+
+#-------------------------------------------------------------------------------
+# _dc_tools_download - Download file with curl/wget
+#-------------------------------------------------------------------------------
+_dc_tools_download() {
+    local url="$1"
+    local dest="$2"
+
+    mkdir -p "$(dirname "$dest")"
+
+    if command -v curl &>/dev/null; then
+        curl -fsSL --progress-bar -o "$dest" "$url"
+    elif command -v wget &>/dev/null; then
+        wget -q --show-progress -O "$dest" "$url"
+    else
+        echo "ERROR: Neither curl nor wget found" >&2
+        return 1
+    fi
+}
+
+#-------------------------------------------------------------------------------
+# _dc_tools_extract - Extract archive and find binary
+#-------------------------------------------------------------------------------
+_dc_tools_extract() {
+    local archive="$1"
+    local tool="$2"
+    local dest_dir="$3"
+
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    trap "rm -rf '$tmp_dir'" RETURN
+
+    # Extract based on extension
+    case "$archive" in
+        *.tar.gz|*.tgz)
+            tar -xzf "$archive" -C "$tmp_dir"
+            ;;
+        *.zip)
+            unzip -q "$archive" -d "$tmp_dir"
+            ;;
+        *)
+            # Assume it's a raw binary
+            cp "$archive" "$tmp_dir/$tool"
+            chmod +x "$tmp_dir/$tool"
+            ;;
+    esac
+
+    # Find the binary (may be in subdirectory)
+    local binary
+    binary=$(find "$tmp_dir" -type f -name "$tool" -o -name "${tool}_*" | head -1)
+
+    # Try common patterns if not found
+    if [[ -z "$binary" || ! -f "$binary" ]]; then
+        binary=$(find "$tmp_dir" -type f -executable | grep -E "/${tool}$|/${tool}_" | head -1)
+    fi
+
+    if [[ -z "$binary" || ! -f "$binary" ]]; then
+        echo "ERROR: Could not find $tool binary in archive" >&2
+        return 1
+    fi
+
+    # Copy to destination
+    mkdir -p "$dest_dir"
+    cp "$binary" "$dest_dir/$tool"
+    chmod +x "$dest_dir/$tool"
+}
+
+#===============================================================================
+# PUBLIC API
+#===============================================================================
+
+#-------------------------------------------------------------------------------
+# dc_tools_list - List all configured tools and their status
+#-------------------------------------------------------------------------------
+dc_tools_list() {
+    local format="${1:-table}"
+    local yq
+    yq=$(_dc_tools_yq) || { echo "ERROR: yq not available"; return 1; }
+
+    local tools
+    tools=$("$yq" -r '.tools | keys | .[]' "$DC_TOOLS_CONFIG" 2>/dev/null)
+
+    case "$format" in
+        json)
+            echo "["
+            local first=true
+            for tool in $tools; do
+                local version required status
+                version=$(_dc_tools_get_config "$tool" "version")
+                required=$(_dc_tools_get_config "$tool" "required")
+                status="missing"
+                [[ -x "$DC_BIN_DIR/$tool" ]] && status="installed"
+
+                [[ "$first" == "true" ]] || echo ","
+                first=false
+                printf '  {"name": "%s", "version": "%s", "required": %s, "status": "%s"}' \
+                    "$tool" "$version" "$required" "$status"
+            done
+            echo ""
+            echo "]"
+            ;;
+
+        simple)
+            for tool in $tools; do
+                local status="[ ]"
+                [[ -x "$DC_BIN_DIR/$tool" ]] && status="[x]"
+                echo "$status $tool"
+            done
+            ;;
+
+        table|*)
+            printf "%-12s %-10s %-10s %-10s %s\n" "Tool" "Version" "Required" "Status" "Path"
+            printf "%-12s %-10s %-10s %-10s %s\n" "----" "-------" "--------" "------" "----"
+
+            for tool in $tools; do
+                local version required status path
+                version=$(_dc_tools_get_config "$tool" "version")
+                required=$(_dc_tools_get_config "$tool" "required")
+                status="Missing"
+                path="-"
+
+                if [[ -x "$DC_BIN_DIR/$tool" ]]; then
+                    status="OK"
+                    path="$DC_BIN_DIR/$tool"
+                elif command -v "$tool" &>/dev/null; then
+                    status="System"
+                    path=$(command -v "$tool")
+                fi
+
+                printf "%-12s %-10s %-10s %-10s %s\n" "$tool" "$version" "$required" "$status" "$path"
+            done
+            ;;
+    esac
+}
+
+#-------------------------------------------------------------------------------
+# dc_tools_install - Download and install a tool
+#-------------------------------------------------------------------------------
+dc_tools_install() {
+    local tool="$1"
+    local force="${2:-false}"
+
+    if [[ -z "$tool" ]]; then
+        echo "Usage: dcx tools install <tool-name> [--force]"
+        echo "       dcx tools install --all"
+        return 1
+    fi
+
+    # Install all tools
+    if [[ "$tool" == "--all" || "$tool" == "all" ]]; then
+        local yq
+        yq=$(_dc_tools_yq) || { echo "ERROR: yq not available"; return 1; }
+        local tools
+        tools=$("$yq" -r '.tools | keys | .[]' "$DC_TOOLS_CONFIG" 2>/dev/null)
+        local failed=0
+        for t in $tools; do
+            dc_tools_install "$t" "$force" || ((failed++))
+        done
+        [[ $failed -eq 0 ]] && echo "All tools installed!" || echo "$failed tool(s) failed"
+        return $failed
+    fi
+
+    # Check if already installed
+    if [[ "$force" != "true" && "$force" != "--force" && -x "$DC_BIN_DIR/$tool" ]]; then
+        echo "$tool is already installed at $DC_BIN_DIR/$tool"
+        return 0
+    fi
+
+    local version url
+    version=$(_dc_tools_get_config "$tool" "version")
+    url=$(_dc_tools_get_url "$tool")
+
+    if [[ -z "$url" ]]; then
+        echo "ERROR: No download URL for $tool on platform $DC_PLATFORM" >&2
+        return 1
+    fi
+
+    echo "Installing $tool v$version..."
+    echo "  URL: $url"
+
+    # Download
+    mkdir -p "$DC_TOOLS_CACHE"
+    local archive="$DC_TOOLS_CACHE/${tool}-${version}-${DC_PLATFORM}.tar.gz"
+
+    echo "  Downloading..."
+    if ! _dc_tools_download "$url" "$archive"; then
+        echo "ERROR: Download failed" >&2
+        return 1
+    fi
+
+    # Extract and install
+    echo "  Extracting..."
+    if ! _dc_tools_extract "$archive" "$tool" "$DC_BIN_DIR"; then
+        echo "ERROR: Extraction failed" >&2
+        return 1
+    fi
+
+    echo "  Installed: $DC_BIN_DIR/$tool"
+
+    # Cleanup cache (optional)
+    rm -f "$archive" 2>/dev/null || true
+
+    return 0
+}
+
+#-------------------------------------------------------------------------------
+# dc_tools_check - Check if required tools are available
+#-------------------------------------------------------------------------------
+dc_tools_check() {
+    local auto_install="${1:-false}"
+    local yq
+    yq=$(_dc_tools_yq) || { echo "ERROR: yq not available (bootstrap first)"; return 1; }
+
+    local missing=()
+    local tools
+    tools=$("$yq" -r '.tools | to_entries[] | select(.value.required == true) | .key' "$DC_TOOLS_CONFIG" 2>/dev/null)
+
+    for tool in $tools; do
+        if [[ ! -x "$DC_BIN_DIR/$tool" ]] && ! command -v "$tool" &>/dev/null; then
+            missing+=("$tool")
+        fi
+    done
+
+    if [[ ${#missing[@]} -eq 0 ]]; then
+        echo "All required tools are available."
+        return 0
+    fi
+
+    echo "Missing required tools: ${missing[*]}"
+
+    if [[ "$auto_install" == "true" || "$auto_install" == "--auto" ]]; then
+        echo "Auto-installing missing tools..."
+        for tool in "${missing[@]}"; do
+            dc_tools_install "$tool"
+        done
+    else
+        echo "Run 'dcx tools install --all' to install them."
+        return 1
+    fi
+}
+
+#-------------------------------------------------------------------------------
+# dc_tools_bootstrap - Bootstrap yq first (chicken-egg problem)
+#-------------------------------------------------------------------------------
+dc_tools_bootstrap() {
+    # yq is needed to read tools.yaml, so we hardcode its URL here
+    if [[ -x "$DC_BIN_DIR/yq" ]] || command -v yq &>/dev/null; then
+        echo "yq is already available."
+        return 0
+    fi
+
+    local platform="${DC_PLATFORM:-$(dc_detect_platform)}"
+    local version="4.44.3"
+    local url
+
+    case "$platform" in
+        linux-amd64) url="https://github.com/mikefarah/yq/releases/download/v${version}/yq_linux_amd64.tar.gz" ;;
+        linux-arm64) url="https://github.com/mikefarah/yq/releases/download/v${version}/yq_linux_arm64.tar.gz" ;;
+        darwin-amd64) url="https://github.com/mikefarah/yq/releases/download/v${version}/yq_darwin_amd64.tar.gz" ;;
+        darwin-arm64) url="https://github.com/mikefarah/yq/releases/download/v${version}/yq_darwin_arm64.tar.gz" ;;
+        *)
+            echo "ERROR: Unsupported platform: $platform" >&2
+            return 1
+            ;;
+    esac
+
+    echo "Bootstrapping yq v$version for $platform..."
+
+    mkdir -p "$DC_TOOLS_CACHE" "$DC_BIN_DIR"
+    local archive="$DC_TOOLS_CACHE/yq-${version}.tar.gz"
+
+    echo "  Downloading..."
+    if ! _dc_tools_download "$url" "$archive"; then
+        echo "ERROR: Download failed" >&2
+        return 1
+    fi
+
+    echo "  Extracting..."
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    tar -xzf "$archive" -C "$tmp_dir"
+
+    # yq archive has yq_<os>_<arch> binary
+    local os arch
+    os=$(echo "$platform" | cut -d- -f1)
+    arch=$(echo "$platform" | cut -d- -f2)
+    local yq_bin="$tmp_dir/yq_${os}_${arch}"
+
+    if [[ ! -f "$yq_bin" ]]; then
+        # Try without underscore
+        yq_bin=$(find "$tmp_dir" -type f -name 'yq*' | head -1)
+    fi
+
+    if [[ -f "$yq_bin" ]]; then
+        cp "$yq_bin" "$DC_BIN_DIR/yq"
+        chmod +x "$DC_BIN_DIR/yq"
+        echo "  Installed: $DC_BIN_DIR/yq"
+    else
+        echo "ERROR: Could not find yq binary in archive" >&2
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+
+    rm -rf "$tmp_dir" "$archive"
+    return 0
+}
+
+#===============================================================================
+# CLI COMMAND
+#===============================================================================
+
+dc_tools_cmd() {
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+
+    case "$subcmd" in
+        list|ls)
+            dc_tools_list "${1:-table}"
+            ;;
+        install|add)
+            dc_tools_install "$@"
+            ;;
+        check)
+            dc_tools_check "$@"
+            ;;
+        bootstrap)
+            dc_tools_bootstrap
+            ;;
+        help|*)
+            cat << 'EOF'
+Usage: dcx tools <command> [options]
+
+Commands:
+  list [format]      List tools (table, json, simple)
+  install <tool>     Install a specific tool
+  install --all      Install all configured tools
+  check              Check if required tools are available
+  check --auto       Check and auto-install missing tools
+  bootstrap          Bootstrap yq (required for other commands)
+  help               Show this help
+
+Examples:
+  dcx tools list
+  dcx tools bootstrap
+  dcx tools install gum
+  dcx tools install --all
+  dcx tools check --auto
+EOF
+            ;;
+    esac
+}

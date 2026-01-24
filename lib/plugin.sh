@@ -128,14 +128,8 @@ dc_load_plugin() {
     local plugin_version
     plugin_version=$(dc_plugin_info "$plugin_dir" "version")
 
-    # Check dependencies
-    local requires_dc
-    requires_dc=$(dc_plugin_info "$plugin_dir" "requires.dc-scripts")
-    if [[ -n "$requires_dc" ]]; then
-        # TODO: Implement version check against ${DC_VERSION:-0.0.0}
-        # For now, just log it
-        :
-    fi
+    # Note: Version check (requires.dc-scripts) intentionally not implemented
+    # YAGNI - implement when plugins actually specify minimum versions
 
     # Check command dependencies
     local requires_cmds
@@ -214,6 +208,18 @@ dc_unload_plugin() {
 #===============================================================================
 # PLUGIN MANAGEMENT
 #===============================================================================
+
+#-------------------------------------------------------------------------------
+# _dc_find_plugin_by_name - Find plugin directory by name
+#-------------------------------------------------------------------------------
+_dc_find_plugin_by_name() {
+    local name="$1"
+    while IFS= read -r dir; do
+        [[ -z "$dir" ]] && continue
+        [[ "$(dc_plugin_info "$dir" "name")" == "$name" ]] && echo "$dir" && return 0
+    done < <(dc_discover_plugins)
+    return 1
+}
 
 #-------------------------------------------------------------------------------
 # dc_plugin_list - List plugins
@@ -301,8 +307,9 @@ dc_plugin_install() {
 
     # Clone repository
     local install_msg="Cloning $repo..."
-    if command -v gum &>/dev/null; then
-        gum spin --title "$install_msg" -- \
+    local gum_bin="${GUM:-gum}"
+    if command -v "$gum_bin" &>/dev/null; then
+        "$gum_bin" spin --title "$install_msg" -- \
             git clone --depth 1 "https://github.com/$repo.git" "$dest"
     else
         echo "$install_msg"
@@ -332,50 +339,15 @@ dc_plugin_install() {
 #-------------------------------------------------------------------------------
 dc_plugin_remove() {
     local name="$1"
+    [[ -z "$name" ]] && { echo "Usage: dcx plugin remove <plugin-name>"; return 1; }
 
-    if [[ -z "$name" ]]; then
-        echo "Usage: dcx plugin remove <plugin-name>"
-        return 1
-    fi
+    local plugin_dir
+    plugin_dir=$(_dc_find_plugin_by_name "$name") || { echo "Plugin not found: $name"; return 1; }
 
-    # Find plugin
-    local plugin_dir=""
-    while IFS= read -r dir; do
-        [[ -z "$dir" ]] && continue
-        local pname
-        pname=$(dc_plugin_info "$dir" "name")
-        if [[ "$pname" == "$name" ]]; then
-            plugin_dir="$dir"
-            break
-        fi
-    done < <(dc_discover_plugins)
+    dc_confirm "Remove plugin '$name' from $plugin_dir?" || { echo "Cancelled."; return 0; }
 
-    if [[ -z "$plugin_dir" ]]; then
-        echo "Plugin not found: $name"
-        return 1
-    fi
-
-    # Confirm removal
-    local do_remove=false
-    if command -v gum &>/dev/null; then
-        if gum confirm "Remove plugin '$name' from $plugin_dir?"; then
-            do_remove=true
-        fi
-    else
-        read -r -p "Remove plugin '$name' from $plugin_dir? [y/N] " response
-        [[ "$response" =~ ^[Yy] ]] && do_remove=true
-    fi
-
-    if [[ "$do_remove" != "true" ]]; then
-        echo "Cancelled."
-        return 0
-    fi
-
-    # Remove
     rm -rf "$plugin_dir"
     echo "Removed: $name"
-
-    # Unregister if loaded
     unset "_DC_LOADED_PLUGINS[$name]" 2>/dev/null || true
 }
 
@@ -391,9 +363,7 @@ dc_plugin_update() {
         while IFS= read -r plugin_dir; do
             [[ -z "$plugin_dir" ]] && continue
             if [[ -d "$plugin_dir/.git" ]]; then
-                local pname
-                pname=$(dc_plugin_info "$plugin_dir" "name")
-                echo "Updating: $pname"
+                echo "Updating: $(dc_plugin_info "$plugin_dir" "name")"
                 (cd "$plugin_dir" && git pull --ff-only 2>/dev/null) || echo "  Failed to update"
             fi
         done < <(dc_discover_plugins)
@@ -401,26 +371,9 @@ dc_plugin_update() {
     fi
 
     # Update specific plugin
-    local plugin_dir=""
-    while IFS= read -r dir; do
-        [[ -z "$dir" ]] && continue
-        local pname
-        pname=$(dc_plugin_info "$dir" "name")
-        if [[ "$pname" == "$name" ]]; then
-            plugin_dir="$dir"
-            break
-        fi
-    done < <(dc_discover_plugins)
-
-    if [[ -z "$plugin_dir" ]]; then
-        echo "Plugin not found: $name"
-        return 1
-    fi
-
-    if [[ ! -d "$plugin_dir/.git" ]]; then
-        echo "Plugin was not installed from git: $name"
-        return 1
-    fi
+    local plugin_dir
+    plugin_dir=$(_dc_find_plugin_by_name "$name") || { echo "Plugin not found: $name"; return 1; }
+    [[ -d "$plugin_dir/.git" ]] || { echo "Plugin was not installed from git: $name"; return 1; }
 
     echo "Updating: $name"
     (cd "$plugin_dir" && git pull --ff-only)
@@ -451,35 +404,17 @@ dc_plugin_cmd() {
             dc_plugin_update "$@"
             ;;
         info)
-            local name="$1"
+            local name="$1" dir
             [[ -z "$name" ]] && { echo "Usage: dcx plugin info <name>"; return 1; }
-            while IFS= read -r dir; do
-                [[ -z "$dir" ]] && continue
-                local pname
-                pname=$(dc_plugin_info "$dir" "name")
-                if [[ "$pname" == "$name" ]]; then
-                    dc_plugin_info "$dir"
-                    return 0
-                fi
-            done < <(dc_discover_plugins)
-            echo "Plugin not found: $name"
-            return 1
+            dir=$(_dc_find_plugin_by_name "$name") || { echo "Plugin not found: $name"; return 1; }
+            dc_plugin_info "$dir"
             ;;
         load)
-            local name="$1"
+            local name="$1" dir
             [[ -z "$name" ]] && { echo "Usage: dcx plugin load <name>"; return 1; }
-            while IFS= read -r dir; do
-                [[ -z "$dir" ]] && continue
-                local pname
-                pname=$(dc_plugin_info "$dir" "name")
-                if [[ "$pname" == "$name" ]]; then
-                    dc_load_plugin "$dir"
-                    echo "Loaded: $name"
-                    return 0
-                fi
-            done < <(dc_discover_plugins)
-            echo "Plugin not found: $name"
-            return 1
+            dir=$(_dc_find_plugin_by_name "$name") || { echo "Plugin not found: $name"; return 1; }
+            dc_load_plugin "$dir"
+            echo "Loaded: $name"
             ;;
         help|*)
             cat << 'EOF'

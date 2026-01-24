@@ -1,0 +1,41 @@
+# AST-grep rules for dc-scripts bash code
+# Run with: dcx lint
+
+id: no-direct-gum-call
+language: bash
+severity: warning
+rule:
+  pattern: gum $A
+message: "Use $GUM variable instead of direct gum call"
+
+---
+id: no-direct-yq-call
+language: bash
+severity: warning
+rule:
+  pattern: yq $A
+message: "Use $YQ or $_DC_YQ_BIN variable instead of direct yq call"
+
+---
+id: no-direct-rg-call
+language: bash
+severity: warning
+rule:
+  pattern: rg $A
+message: "Use $RG variable instead of direct rg call"
+
+---
+id: no-direct-fd-call
+language: bash
+severity: warning
+rule:
+  pattern: fd $A
+message: "Use $FD variable instead of direct fd call"
+
+---
+id: prefer-bundled-binary
+language: bash
+severity: hint
+rule:
+  pattern: command -v $A
+message: "Consider using _dc_find_binary for consistent binary discovery"

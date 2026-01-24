@@ -272,6 +272,47 @@ publish: ## Publica no GitHub
 		$(RELEASE_DIR)/$(NAME)-$(VERSION).sha256
 	$(OK) "Publicado: https://github.com/$(REPO)/releases/tag/v$(VERSION)"
 
+.PHONY: deploy
+deploy: ## Commit, build, release e publish em um comando
+	$(INFO) "Deploy completo v$(VERSION)..."
+	@# 1. Commit all changes
+	@git add -A
+	@git diff --cached --quiet || git commit -m "feat: Release v$(VERSION)" || true
+	@# 2. Push to remote
+	@git push origin main 2>/dev/null || true
+	@# 3. Build Go binaries
+	$(INFO) "Compilando binários..."
+	@./scripts/build.sh all
+	@# 4. Run tests
+	$(INFO) "Rodando testes..."
+	@bash tests/run_all_tests.sh >/dev/null && $(OK) "Testes OK" || { $(WARN) "Testes falharam"; exit 1; }
+	@# 5. Create release tarball
+	$(INFO) "Criando release..."
+	@mkdir -p $(RELEASE_DIR)
+	@tar -czf $(RELEASE_DIR)/$(NAME)-$(VERSION).tar.gz \
+		--transform 's,^,$(NAME)-$(VERSION)/,' \
+		--exclude='release' \
+		--exclude='.git' \
+		--exclude='*.tar.gz' \
+		--exclude='build' \
+		--exclude='bin/dcx-go' \
+		lib/ etc/ plugins/ share/ tests/ bin/ \
+		VERSION README.md Makefile install.sh \
+		2>/dev/null
+	@cd $(RELEASE_DIR) && sha256sum $(NAME)-$(VERSION).tar.gz > $(NAME)-$(VERSION).sha256
+	@# 6. Upload to GitHub Release (update if exists)
+	$(INFO) "Atualizando GitHub Release..."
+	@gh release upload "v$(VERSION)" \
+		$(RELEASE_DIR)/$(NAME)-$(VERSION).tar.gz \
+		$(RELEASE_DIR)/$(NAME)-$(VERSION).sha256 \
+		--clobber 2>/dev/null || \
+		gh release create "v$(VERSION)" \
+			--title "v$(VERSION)" \
+			--notes "Release v$(VERSION)" \
+			$(RELEASE_DIR)/$(NAME)-$(VERSION).tar.gz \
+			$(RELEASE_DIR)/$(NAME)-$(VERSION).sha256
+	$(OK) "Deploy completo: https://github.com/$(REPO)/releases/tag/v$(VERSION)"
+
 #===============================================================================
 # BINARIES
 #===============================================================================

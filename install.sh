@@ -188,7 +188,8 @@ else
     cp -r "$EXTRACTED_DIR/bin/"* "$INSTALL_DIR/bin/" 2>/dev/null || true
     cp "$EXTRACTED_DIR/VERSION" "$INSTALL_DIR/" 2>/dev/null || true
 
-    # Setup dcx command
+    # Setup dcx command (only the wrapper is exposed to user's PATH)
+    # Go binary and tools stay internal in share/DCX/bin/
     if [[ -f "$INSTALL_DIR/bin/dcx" ]]; then
         cp "$INSTALL_DIR/bin/dcx" "$BIN_DIR/dcx"
         chmod +x "$BIN_DIR/dcx"

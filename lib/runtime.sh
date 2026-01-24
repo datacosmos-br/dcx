@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 #===============================================================================
-# dc-scripts/lib/runtime.sh - Runtime Utilities and Gum Wrappers
+# dc-scripts/lib/runtime.sh - Runtime Utilities
 #===============================================================================
-# Version: 0.1.1
-# Dependencies: gum
 # License: MIT
 #===============================================================================
 
@@ -24,7 +22,7 @@ declare -r _DC_RUNTIME_LOADED=1
 need_cmd() {
     local cmd="$1"
     command -v "$cmd" &>/dev/null || {
-        gum log --level error "Required command not found: $cmd"
+        echo "ERROR: Required command not found: $cmd" >&2
         return 1
     }
 }
@@ -42,7 +40,7 @@ need_cmds() {
     done
 
     if [[ ${#missing[@]} -gt 0 ]]; then
-        gum log --level error "Required commands not found: ${missing[*]}"
+        echo "ERROR: Required commands not found: ${missing[*]}" >&2
         return 1
     fi
 }
@@ -55,7 +53,7 @@ need_cmds() {
 assert_file() {
     local file="$1"
     [[ -f "$file" ]] || {
-        gum log --level error "File not found: $file"
+        echo "ERROR: File not found: $file" >&2
         return 1
     }
 }
@@ -68,7 +66,7 @@ assert_file() {
 assert_dir() {
     local dir="$1"
     [[ -d "$dir" ]] || {
-        gum log --level error "Directory not found: $dir"
+        echo "ERROR: Directory not found: $dir" >&2
         return 1
     }
 }
@@ -82,7 +80,7 @@ assert_nonempty() {
     local value="$1"
     local name="${2:-value}"
     [[ -n "$value" ]] || {
-        gum log --level error "Value is empty: $name"
+        echo "ERROR: Value is empty: $name" >&2
         return 1
     }
 }
@@ -96,84 +94,14 @@ assert_var() {
     local var="$1"
     local value="${!var:-}"
     [[ -n "$value" ]] || {
-        gum log --level error "Environment variable not set: $var"
+        echo "ERROR: Environment variable not set: $var" >&2
         return 1
     }
 }
 
 #===============================================================================
-# GUM WRAPPERS - Simplified interfaces
+# UTILITY FUNCTIONS
 #===============================================================================
-
-#-------------------------------------------------------------------------------
-# confirm - Ask for confirmation (Yes/No)
-#-------------------------------------------------------------------------------
-# Usage: confirm "Are you sure?"
-# Returns 0 for Yes, 1 for No.
-#-------------------------------------------------------------------------------
-confirm() {
-    local prompt="${1:-Continue?}"
-    gum confirm "$prompt"
-}
-
-#-------------------------------------------------------------------------------
-# choose - Select from a list of options
-#-------------------------------------------------------------------------------
-# Usage: choice=$(choose "Option A" "Option B" "Option C")
-# Returns selected option to stdout.
-#-------------------------------------------------------------------------------
-choose() {
-    gum choose "$@"
-}
-
-#-------------------------------------------------------------------------------
-# choose_multi - Select multiple options from a list
-#-------------------------------------------------------------------------------
-# Usage: choices=$(choose_multi "Option A" "Option B" "Option C")
-# Returns selected options (newline separated) to stdout.
-#-------------------------------------------------------------------------------
-choose_multi() {
-    gum choose --no-limit "$@"
-}
-
-#-------------------------------------------------------------------------------
-# input - Get user input
-#-------------------------------------------------------------------------------
-# Usage: name=$(input "Enter your name" "default")
-# Arguments:
-#   $1 - Placeholder text
-#   $2 - Default value (optional)
-#-------------------------------------------------------------------------------
-input() {
-    local placeholder="${1:-}"
-    local default="${2:-}"
-
-    if [[ -n "$default" ]]; then
-        gum input --placeholder "$placeholder" --value "$default"
-    else
-        gum input --placeholder "$placeholder"
-    fi
-}
-
-#-------------------------------------------------------------------------------
-# input_password - Get password input (masked)
-#-------------------------------------------------------------------------------
-# Usage: password=$(input_password "Enter password")
-#-------------------------------------------------------------------------------
-input_password() {
-    local placeholder="${1:-Enter password}"
-    gum input --password --placeholder "$placeholder"
-}
-
-#-------------------------------------------------------------------------------
-# input_multiline - Get multiline text input
-#-------------------------------------------------------------------------------
-# Usage: text=$(input_multiline "Enter description")
-#-------------------------------------------------------------------------------
-input_multiline() {
-    local placeholder="${1:-}"
-    gum write --placeholder "$placeholder"
-}
 
 #-------------------------------------------------------------------------------
 # spin - Execute command with spinner
@@ -186,78 +114,14 @@ input_multiline() {
 spin() {
     local title="$1"
     shift
-    gum spin --title "$title" -- "$@"
+    local gum_bin="${GUM:-gum}"
+    if command -v "$gum_bin" &>/dev/null && [[ -t 1 ]]; then
+        "$gum_bin" spin --title "$title" -- "$@"
+    else
+        echo "$title"
+        "$@"
+    fi
 }
-
-#-------------------------------------------------------------------------------
-# log - Log a message with level
-#-------------------------------------------------------------------------------
-# Usage: log info "Starting process"
-#        log warn "Something might be wrong"
-#        log error "Something went wrong"
-# Levels: debug, info, warn, error, fatal
-#-------------------------------------------------------------------------------
-log() {
-    local level="$1"
-    shift
-    gum log --level "$level" "$@"
-}
-
-#-------------------------------------------------------------------------------
-# style - Style text output
-#-------------------------------------------------------------------------------
-# Usage: style --bold "Important text"
-#        style --foreground 212 "Pink text"
-#-------------------------------------------------------------------------------
-style() {
-    gum style "$@"
-}
-
-#-------------------------------------------------------------------------------
-# filter - Fuzzy filter a list
-#-------------------------------------------------------------------------------
-# Usage: selected=$(echo -e "opt1\nopt2\nopt3" | filter "Select option")
-# Arguments:
-#   $1 - Placeholder/prompt text
-#-------------------------------------------------------------------------------
-filter() {
-    local placeholder="${1:-Filter...}"
-    gum filter --placeholder "$placeholder"
-}
-
-#-------------------------------------------------------------------------------
-# file_select - Select a file using file browser
-#-------------------------------------------------------------------------------
-# Usage: file=$(file_select /path/to/start)
-#-------------------------------------------------------------------------------
-file_select() {
-    local start_dir="${1:-.}"
-    gum file "$start_dir"
-}
-
-#-------------------------------------------------------------------------------
-# table - Display data as table
-#-------------------------------------------------------------------------------
-# Usage: echo -e "Name,Age\nJohn,30\nJane,25" | table
-# Note: Input should be CSV format
-#-------------------------------------------------------------------------------
-table() {
-    gum table
-}
-
-#-------------------------------------------------------------------------------
-# format_md - Render markdown
-#-------------------------------------------------------------------------------
-# Usage: format_md "# Title\n\nSome **bold** text"
-#-------------------------------------------------------------------------------
-format_md() {
-    local text="$1"
-    echo -e "$text" | gum format
-}
-
-#===============================================================================
-# UTILITY FUNCTIONS
-#===============================================================================
 
 #-------------------------------------------------------------------------------
 # retry - Retry a command with exponential backoff
@@ -280,13 +144,13 @@ retry() {
         fi
         ((attempt++))
         if (( attempt < max_retries )); then
-            gum log --level warn "Attempt $attempt failed, retrying in ${delay}s..."
+            echo "WARN: Attempt $attempt failed, retrying in ${delay}s..." >&2
             sleep "$delay"
             delay=$((delay * 2))
         fi
     done
 
-    gum log --level error "Command failed after $max_retries attempts"
+    echo "ERROR: Command failed after $max_retries attempts" >&2
     return 1
 }
 
@@ -327,7 +191,7 @@ run_or_die() {
     shift
 
     if ! "$@"; then
-        gum log --level fatal "$error_msg"
+        echo "FATAL: $error_msg" >&2
         exit 1
     fi
 }

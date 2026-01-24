@@ -2,46 +2,9 @@
 #===============================================================================
 # test_logging.sh - Tests for lib/logging.sh
 #===============================================================================
-
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 
-# Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LIB_DIR="${SCRIPT_DIR}/../lib"
-
-# Test counters
-TESTS_RUN=0
-TESTS_PASSED=0
-TESTS_FAILED=0
-
-#-------------------------------------------------------------------------------
-# Test helpers
-#-------------------------------------------------------------------------------
-test_pass() {
-    TESTS_PASSED=$((TESTS_PASSED + 1))
-    echo "  ✓ $1"
-}
-
-test_fail() {
-    TESTS_FAILED=$((TESTS_FAILED + 1))
-    echo "  ✗ $1"
-}
-
-run_test() {
-    local name="$1"
-    local cmd="$2"
-    TESTS_RUN=$((TESTS_RUN + 1))
-
-    if eval "$cmd" &>/dev/null; then
-        test_pass "$name"
-    else
-        test_fail "$name"
-    fi
-}
-
-#-------------------------------------------------------------------------------
-# Tests
-#-------------------------------------------------------------------------------
 echo "Testing logging.sh..."
 echo ""
 
@@ -50,14 +13,8 @@ source "${LIB_DIR}/logging.sh"
 
 # Test: Module loads without error
 run_test "logging.sh loads" "true"
-
-# Test: Guard variable set
 run_test "_DC_LOGGING_LOADED set" "[[ -n \"\${_DC_LOGGING_LOADED:-}\" ]]"
-
-# Test: Log levels array exists
 run_test "_DC_LOG_LEVELS exists" "[[ -n \"\${_DC_LOG_LEVELS[info]:-}\" ]]"
-
-# Test: Default log level is info
 run_test "DC_LOG_LEVEL default is info" "[[ \"\${DC_LOG_LEVEL}\" == \"info\" ]]"
 
 # Test: Core functions exist
@@ -103,8 +60,6 @@ run_test "log_set_level debug" "log_set_level debug && [[ \"\$DC_LOG_LEVEL\" == 
 run_test "log_set_level info" "log_set_level info && [[ \"\$DC_LOG_LEVEL\" == \"info\" ]]"
 run_test "log_set_level warn" "log_set_level warn && [[ \"\$DC_LOG_LEVEL\" == \"warn\" ]]"
 run_test "log_set_level error" "log_set_level error && [[ \"\$DC_LOG_LEVEL\" == \"error\" ]]"
-
-# Test: log_set_level rejects invalid level
 run_test "log_set_level rejects invalid" "! log_set_level invalid"
 
 # Test: log_set_module_level works
@@ -113,8 +68,6 @@ run_test "log_set_module_level" "log_set_module_level 'test.sh' 'debug'"
 # Test: log_get_module_level returns correct level
 log_set_module_level "test.sh" "warn"
 run_test "log_get_module_level" "[[ \"\$(log_get_module_level 'test.sh')\" == \"warn\" ]]"
-
-# Test: log_get_module_level falls back to global
 run_test "log_get_module_level fallback" "[[ \"\$(log_get_module_level 'unknown.sh')\" == \"\$DC_LOG_LEVEL\" ]]"
 
 # Test: _dc_should_log respects log levels
@@ -167,17 +120,4 @@ run_test "log_cmd returns exit code" "! log_cmd false"
 # Test: log_progress produces output (redirect stderr)
 run_test "log_progress output" "[[ -n \"\$(log_progress 5 10 'Testing' 2>&1)\" ]]"
 
-#-------------------------------------------------------------------------------
-# Summary
-#-------------------------------------------------------------------------------
-echo ""
-echo "----------------------------------------"
-echo "Tests: ${TESTS_RUN} | Passed: ${TESTS_PASSED} | Failed: ${TESTS_FAILED}"
-
-if [[ $TESTS_FAILED -eq 0 ]]; then
-    echo "All tests passed!"
-    exit 0
-else
-    echo "Some tests failed."
-    exit 1
-fi
+test_summary

@@ -2,84 +2,22 @@
 #===============================================================================
 # test_parallel.sh - Tests for lib/parallel.sh
 #===============================================================================
-
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 
-# Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LIB_DIR="${SCRIPT_DIR}/../lib"
-TMP_DIR="${SCRIPT_DIR}/tmp"
-
-# Test counters
-TESTS_RUN=0
-TESTS_PASSED=0
-TESTS_FAILED=0
-
-#-------------------------------------------------------------------------------
-# Test helpers
-#-------------------------------------------------------------------------------
-test_pass() {
-    TESTS_PASSED=$((TESTS_PASSED + 1))
-    echo "  ✓ $1"
-}
-
-test_fail() {
-    TESTS_FAILED=$((TESTS_FAILED + 1))
-    echo "  ✗ $1"
-}
-
-run_test() {
-    local name="$1"
-    local cmd="$2"
-    TESTS_RUN=$((TESTS_RUN + 1))
-
-    if eval "$cmd" &>/dev/null; then
-        test_pass "$name"
-    else
-        test_fail "$name"
-    fi
-}
-
-#-------------------------------------------------------------------------------
-# Setup
-#-------------------------------------------------------------------------------
-setup() {
-    mkdir -p "$TMP_DIR"
-}
-
-#-------------------------------------------------------------------------------
-# Teardown
-#-------------------------------------------------------------------------------
-teardown() {
-    rm -rf "$TMP_DIR"
-}
-
-#-------------------------------------------------------------------------------
-# Test helper functions
-#-------------------------------------------------------------------------------
-write_file() {
-    local name="$1"
-    echo "$name" >> "${TMP_DIR}/output.txt"
-}
-
-slow_write() {
-    local name="$1"
-    sleep 0.1
-    echo "$name" >> "${TMP_DIR}/output.txt"
-}
-
-failing_cmd() {
-    return 1
-}
-
-#-------------------------------------------------------------------------------
-# Tests
-#-------------------------------------------------------------------------------
 echo "Testing parallel.sh..."
 echo ""
 
 # Setup
-setup
+test_setup
+
+# Test helper functions
+write_file() {
+    local name="$1"
+    echo "$name" >> "${TMP_DIR}/output.txt"
+}
+export -f write_file
+export TMP_DIR
 
 # Source modules
 source "${LIB_DIR}/core.sh"
@@ -87,8 +25,6 @@ source "${LIB_DIR}/parallel.sh"
 
 # Test: Module loads without error
 run_test "parallel.sh loads" "true"
-
-# Test: _DC_PARALLEL_LOADED is set
 run_test "_DC_PARALLEL_LOADED set" "[[ -n \"\${_DC_PARALLEL_LOADED:-}\" ]]"
 
 # Test: Functions exist
@@ -107,7 +43,7 @@ run_test "default max jobs" "[[ \"\$DC_PARALLEL_MAX_JOBS\" == \"4\" ]]"
 # Test: parallel_limit changes default
 parallel_limit 8
 run_test "parallel_limit" "[[ \"\$DC_PARALLEL_MAX_JOBS\" == \"8\" ]]"
-parallel_limit 4  # Reset
+parallel_limit 4
 
 # Test: parallel_cpu_count returns number
 cpu_count=$(parallel_cpu_count)
@@ -141,8 +77,6 @@ run_test "parallel_run success" "parallel_run 2 'true' 'true' 'true'"
 
 # Test: parallel_map applies function to items
 rm -f "${TMP_DIR}/output.txt"
-export TMP_DIR  # Make available to subshells
-export -f write_file
 parallel_map 2 write_file "item1" "item2" "item3"
 count=$(wc -l < "${TMP_DIR}/output.txt")
 run_test "parallel_map" "[[ \"$count\" == \"3\" ]]"
@@ -179,20 +113,4 @@ parallel_auto \
 count=$(wc -l < "${TMP_DIR}/output.txt")
 run_test "parallel_auto" "[[ \"$count\" == \"2\" ]]"
 
-# Teardown
-teardown
-
-#-------------------------------------------------------------------------------
-# Summary
-#-------------------------------------------------------------------------------
-echo ""
-echo "----------------------------------------"
-echo "Tests: ${TESTS_RUN} | Passed: ${TESTS_PASSED} | Failed: ${TESTS_FAILED}"
-
-if [[ $TESTS_FAILED -eq 0 ]]; then
-    echo "All tests passed!"
-    exit 0
-else
-    echo "Some tests failed."
-    exit 1
-fi
+test_summary

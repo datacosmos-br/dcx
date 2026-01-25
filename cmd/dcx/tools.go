@@ -16,12 +16,13 @@ import (
 
 // ToolConfig represents a single tool configuration
 type ToolConfig struct {
-	Version     string            `yaml:"version"`
-	Required    bool              `yaml:"required"`
-	Description string            `yaml:"description"`
-	URLs        map[string]string `yaml:"urls"`
-	Binary      string            `yaml:"binary"`
-	Extract     string            `yaml:"extract"`
+	Version       string            `yaml:"version"`
+	Required      bool              `yaml:"required"`
+	Description   string            `yaml:"description"`
+	URLs          map[string]string `yaml:"urls"`
+	Binary        string            `yaml:"binary"`
+	ArchiveBinary string            `yaml:"archive_binary"` // Name of binary inside archive (if different from Binary)
+	Extract       string            `yaml:"extract"`
 }
 
 // ToolsConfig represents the full tools.yaml configuration
@@ -215,15 +216,19 @@ func toolsInstall(name string, force bool) error {
 		return fmt.Errorf("download failed: %w", err)
 	}
 
-	// Extract
+	// Extract - use ArchiveBinary if defined (for tools with different names in archive)
 	fmt.Println("  Extracting...")
+	binaryToFind := name
+	if tool.ArchiveBinary != "" {
+		binaryToFind = tool.ArchiveBinary
+	}
 	if ext == ".zip" {
-		if err := extractFromZip(archivePath, name, destPath); err != nil {
+		if err := extractFromZip(archivePath, binaryToFind, destPath); err != nil {
 			os.Remove(archivePath)
 			return fmt.Errorf("extraction failed: %w", err)
 		}
 	} else {
-		if err := extractFromTarGz(archivePath, name, destPath); err != nil {
+		if err := extractFromTarGz(archivePath, binaryToFind, destPath); err != nil {
 			os.Remove(archivePath)
 			return fmt.Errorf("extraction failed: %w", err)
 		}

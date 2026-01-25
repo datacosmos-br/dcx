@@ -196,6 +196,14 @@ else
     fi
 
     _log "Installation complete!"
+
+    # Download tools for current platform
+    _log "Downloading tools for ${PLATFORM}..."
+    if "$BIN_DIR/dcx" tools install --all 2>/dev/null; then
+        _log "Tools installed successfully"
+    else
+        echo "[WARN] Could not download tools automatically. Run 'dcx tools install --all' later."
+    fi
 fi
 
 #===============================================================================

@@ -79,14 +79,15 @@ tools:
     extract: tar.gz
 
   sg:
-    version: "0.31.1"
+    version: "0.40.5"
     required: false
     description: "ast-grep - AST-based code search and rewrite"
     urls:
-      linux-amd64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/sg-x86_64-unknown-linux-gnu.zip"
-      linux-arm64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/sg-aarch64-unknown-linux-gnu.zip"
-      darwin-amd64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/sg-x86_64-apple-darwin.zip"
-      darwin-arm64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/sg-aarch64-apple-darwin.zip"
-      windows-amd64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/sg-x86_64-pc-windows-msvc.zip"
+      linux-amd64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/app-x86_64-unknown-linux-gnu.zip"
+      linux-arm64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/app-aarch64-unknown-linux-gnu.zip"
+      darwin-amd64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/app-x86_64-apple-darwin.zip"
+      darwin-arm64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/app-aarch64-apple-darwin.zip"
+      windows-amd64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/app-x86_64-pc-windows-msvc.zip"
     binary: "sg"
+    archive_binary: "ast-grep"
     extract: zip

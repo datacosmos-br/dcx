@@ -217,12 +217,22 @@ _install_remote() {
     # Check existing installation
     local existing_version
     if existing_version=$(_check_existing_install "$install_dir"); then
-        if [[ "$force" != "true" ]]; then
-            _info "Found existing installation: v${existing_version}"
-            if [[ -n "$version" && "$existing_version" == "$version" ]]; then
-                _log "Version v${version} is already installed. Use --force to reinstall."
-                return 0
-            fi
+        _info "Found existing installation: v${existing_version}"
+
+        # Get latest version if not specified
+        local target_version="$version"
+        if [[ -z "$target_version" ]]; then
+            _step "Checking for updates..."
+            target_version=$(_get_latest_version) || target_version=""
+        fi
+
+        # Compare versions
+        if [[ -n "$target_version" && "$existing_version" == "$target_version" && "$force" != "true" ]]; then
+            _log "Already up to date (v${existing_version})"
+            _print_success "$prefix" "$existing_version"
+            return 0
+        elif [[ -n "$target_version" && "$existing_version" != "$target_version" ]]; then
+            _info "Updating: v${existing_version} → v${target_version}"
         fi
     fi
 
@@ -310,23 +320,64 @@ _install_remote() {
     extracted_dir=$(find "$TMP_DIR" -maxdepth 1 -type d -name "${PROJECT_NAME}-*" 2>/dev/null | head -1)
     [[ -z "$extracted_dir" ]] && extracted_dir="$TMP_DIR"
 
-    # Install files
+    # Install files (with atomic overwrites)
     _step "Installing to ${install_dir}..."
     mkdir -p "$install_dir"/{bin,lib,etc,plugins,share/completions}
     mkdir -p "$bin_dir"
 
-    # Copy files (ignore errors for optional directories)
-    cp -r "$extracted_dir/lib/"* "$install_dir/lib/" 2>/dev/null || true
-    cp -r "$extracted_dir/etc/"* "$install_dir/etc/" 2>/dev/null || true
-    cp -r "$extracted_dir/bin/"* "$install_dir/bin/" 2>/dev/null || true
-    cp "$extracted_dir/VERSION" "$install_dir/" 2>/dev/null || echo "$version" > "$install_dir/VERSION"
+    # Copy files with overwrite (remove existing first to avoid conflicts)
+    # lib/
+    if [[ -d "$extracted_dir/lib" ]]; then
+        find "$extracted_dir/lib" -type f | while read -r src; do
+            local rel="${src#$extracted_dir/lib/}"
+            local dest="$install_dir/lib/$rel"
+            mkdir -p "$(dirname "$dest")"
+            rm -f "$dest" 2>/dev/null || true
+            cp "$src" "$dest"
+        done
+    fi
 
-    # Setup dcx command in user's PATH
+    # etc/
+    if [[ -d "$extracted_dir/etc" ]]; then
+        find "$extracted_dir/etc" -type f | while read -r src; do
+            local rel="${src#$extracted_dir/etc/}"
+            local dest="$install_dir/etc/$rel"
+            mkdir -p "$(dirname "$dest")"
+            rm -f "$dest" 2>/dev/null || true
+            cp "$src" "$dest"
+        done
+    fi
+
+    # bin/ (with executable permissions)
+    if [[ -d "$extracted_dir/bin" ]]; then
+        find "$extracted_dir/bin" -type f | while read -r src; do
+            local rel="${src#$extracted_dir/bin/}"
+            local dest="$install_dir/bin/$rel"
+            mkdir -p "$(dirname "$dest")"
+            rm -f "$dest" 2>/dev/null || true
+            cp "$src" "$dest"
+            chmod +x "$dest" 2>/dev/null || true
+        done
+    fi
+
+    # VERSION file
+    rm -f "$install_dir/VERSION" 2>/dev/null || true
+    if [[ -f "$extracted_dir/VERSION" ]]; then
+        cp "$extracted_dir/VERSION" "$install_dir/VERSION"
+    else
+        echo "$version" > "$install_dir/VERSION"
+    fi
+
+    _log "Files installed"
+
+    # Setup dcx command in user's PATH (atomic overwrite)
     if [[ -f "$install_dir/bin/dcx" ]]; then
+        rm -f "$bin_dir/dcx" 2>/dev/null || true
         cp "$install_dir/bin/dcx" "$bin_dir/dcx"
         chmod +x "$bin_dir/dcx"
         _log "Installed dcx to ${bin_dir}/dcx"
     elif [[ -f "$install_dir/bin/dcx.exe" ]]; then
+        rm -f "$bin_dir/dcx.exe" 2>/dev/null || true
         cp "$install_dir/bin/dcx.exe" "$bin_dir/dcx.exe"
         _log "Installed dcx.exe to ${bin_dir}/dcx.exe"
     fi

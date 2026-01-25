@@ -1,93 +1,128 @@
 # DCX Tools Configuration
-# Defines bundled tools, versions, and download URLs
-# Used by: lib/tools.sh for automatic download
+# =============================================================================
+# Central registry of all bundled tools with versions and official download URLs
+# Used by: install.sh, dcx tools, scripts/create-platform-release.sh
+# =============================================================================
 
-# Download behavior
 settings:
-  auto_download: true           # Download missing tools automatically
-  verify_checksum: false        # TODO: implement checksum verification
-  cache_dir: "${DC_HOME}/cache" # Download cache directory
+  auto_download: true
+  verify_checksum: true
+  retry_count: 3
+  timeout: 120
 
-# Tool definitions
-# Each tool has: version, required (bool), and platform-specific URLs
+# Tool Definitions
+# Each tool has:
+#   version: Official release version
+#   required: If true, installation fails without this tool
+#   description: Human-readable description
+#   homepage: Official project URL
+#   urls: Platform-specific download URLs from official releases
+#   binary: Name of the binary after extraction
+#   archive_binary: Name inside the archive (if different from binary)
+#   extract: Archive format (tar.gz or zip)
+
 tools:
-  # Go tools (from GitHub releases)
+  #=============================================================================
+  # REQUIRED TOOLS (gum, yq)
+  #=============================================================================
+
   gum:
     version: "0.14.5"
     required: true
-    description: "Terminal UI toolkit"
+    description: "Terminal UI toolkit for interactive prompts"
+    homepage: "https://github.com/charmbracelet/gum"
+    binary: "gum"
+    extract: tar.gz
     urls:
       linux-amd64: "https://github.com/charmbracelet/gum/releases/download/v{version}/gum_{version}_Linux_x86_64.tar.gz"
       linux-arm64: "https://github.com/charmbracelet/gum/releases/download/v{version}/gum_{version}_Linux_arm64.tar.gz"
       darwin-amd64: "https://github.com/charmbracelet/gum/releases/download/v{version}/gum_{version}_Darwin_x86_64.tar.gz"
       darwin-arm64: "https://github.com/charmbracelet/gum/releases/download/v{version}/gum_{version}_Darwin_arm64.tar.gz"
       windows-amd64: "https://github.com/charmbracelet/gum/releases/download/v{version}/gum_{version}_Windows_x86_64.zip"
-    binary: "gum"
-    extract: tar.gz
 
   yq:
     version: "4.44.3"
     required: true
-    description: "YAML processor"
+    description: "YAML/JSON/XML processor"
+    homepage: "https://github.com/mikefarah/yq"
+    binary: "yq"
+    extract: tar.gz
     urls:
       linux-amd64: "https://github.com/mikefarah/yq/releases/download/v{version}/yq_linux_amd64.tar.gz"
       linux-arm64: "https://github.com/mikefarah/yq/releases/download/v{version}/yq_linux_arm64.tar.gz"
       darwin-amd64: "https://github.com/mikefarah/yq/releases/download/v{version}/yq_darwin_amd64.tar.gz"
       darwin-arm64: "https://github.com/mikefarah/yq/releases/download/v{version}/yq_darwin_arm64.tar.gz"
       windows-amd64: "https://github.com/mikefarah/yq/releases/download/v{version}/yq_windows_amd64.zip"
-    binary: "yq_{os}_{arch}"
-    extract: tar.gz
+    archive_binary:
+      linux-amd64: "yq_linux_amd64"
+      linux-arm64: "yq_linux_arm64"
+      darwin-amd64: "yq_darwin_amd64"
+      darwin-arm64: "yq_darwin_arm64"
+      windows-amd64: "yq_windows_amd64.exe"
 
-  # Rust tools (from GitHub releases)
+  #=============================================================================
+  # OPTIONAL TOOLS (rg, fd, sd, sg)
+  #=============================================================================
+
   rg:
     version: "14.1.1"
     required: false
-    description: "ripgrep - fast search"
+    description: "ripgrep - Fast recursive search"
+    homepage: "https://github.com/BurntSushi/ripgrep"
+    binary: "rg"
+    extract: tar.gz
     urls:
       linux-amd64: "https://github.com/BurntSushi/ripgrep/releases/download/{version}/ripgrep-{version}-x86_64-unknown-linux-musl.tar.gz"
       linux-arm64: "https://github.com/BurntSushi/ripgrep/releases/download/{version}/ripgrep-{version}-aarch64-unknown-linux-gnu.tar.gz"
       darwin-amd64: "https://github.com/BurntSushi/ripgrep/releases/download/{version}/ripgrep-{version}-x86_64-apple-darwin.tar.gz"
       darwin-arm64: "https://github.com/BurntSushi/ripgrep/releases/download/{version}/ripgrep-{version}-aarch64-apple-darwin.tar.gz"
       windows-amd64: "https://github.com/BurntSushi/ripgrep/releases/download/{version}/ripgrep-{version}-x86_64-pc-windows-msvc.zip"
-    binary: "rg"
-    extract: tar.gz
 
   fd:
     version: "10.2.0"
     required: false
-    description: "fd - fast find"
+    description: "fd - Fast and user-friendly find alternative"
+    homepage: "https://github.com/sharkdp/fd"
+    binary: "fd"
+    extract: tar.gz
     urls:
       linux-amd64: "https://github.com/sharkdp/fd/releases/download/v{version}/fd-v{version}-x86_64-unknown-linux-musl.tar.gz"
       linux-arm64: "https://github.com/sharkdp/fd/releases/download/v{version}/fd-v{version}-aarch64-unknown-linux-gnu.tar.gz"
       darwin-amd64: "https://github.com/sharkdp/fd/releases/download/v{version}/fd-v{version}-x86_64-apple-darwin.tar.gz"
       darwin-arm64: "https://github.com/sharkdp/fd/releases/download/v{version}/fd-v{version}-aarch64-apple-darwin.tar.gz"
       windows-amd64: "https://github.com/sharkdp/fd/releases/download/v{version}/fd-v{version}-x86_64-pc-windows-msvc.zip"
-    binary: "fd"
-    extract: tar.gz
 
   sd:
     version: "1.0.0"
     required: false
-    description: "sd - fast sed"
+    description: "sd - Intuitive find & replace (sed alternative)"
+    homepage: "https://github.com/chmln/sd"
+    binary: "sd"
+    extract: tar.gz
     urls:
       linux-amd64: "https://github.com/chmln/sd/releases/download/v{version}/sd-v{version}-x86_64-unknown-linux-musl.tar.gz"
-      linux-arm64: "https://github.com/chmln/sd/releases/download/v{version}/sd-v{version}-aarch64-unknown-linux-gnu.tar.gz"
+      # Note: sd does not have official arm64 linux release
+      # linux-arm64: not available
       darwin-amd64: "https://github.com/chmln/sd/releases/download/v{version}/sd-v{version}-x86_64-apple-darwin.tar.gz"
       darwin-arm64: "https://github.com/chmln/sd/releases/download/v{version}/sd-v{version}-aarch64-apple-darwin.tar.gz"
       windows-amd64: "https://github.com/chmln/sd/releases/download/v{version}/sd-v{version}-x86_64-pc-windows-msvc.zip"
-    binary: "sd"
-    extract: tar.gz
 
   sg:
     version: "0.40.5"
     required: false
     description: "ast-grep - AST-based code search and rewrite"
+    homepage: "https://github.com/ast-grep/ast-grep"
+    binary: "sg"
+    extract: zip
     urls:
       linux-amd64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/app-x86_64-unknown-linux-gnu.zip"
       linux-arm64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/app-aarch64-unknown-linux-gnu.zip"
       darwin-amd64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/app-x86_64-apple-darwin.zip"
       darwin-arm64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/app-aarch64-apple-darwin.zip"
       windows-amd64: "https://github.com/ast-grep/ast-grep/releases/download/{version}/app-x86_64-pc-windows-msvc.zip"
-    binary: "sg"
-    archive_binary: "ast-grep"
-    extract: zip
+    archive_binary:
+      linux-amd64: "ast-grep"
+      linux-arm64: "ast-grep"
+      darwin-amd64: "ast-grep"
+      darwin-arm64: "ast-grep"
+      windows-amd64: "ast-grep.exe"

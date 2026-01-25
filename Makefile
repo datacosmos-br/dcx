@@ -89,8 +89,11 @@ help:
 	@printf "  $(C_CYAN)bump-major$(C_RESET) Incrementa major (X.0.0)\n"
 	@echo ""
 	@printf "$(C_GREEN)Release$(C_RESET)\n"
-	@printf "  $(C_CYAN)release$(C_RESET)    Cria tarball para release\n"
-	@printf "  $(C_CYAN)publish$(C_RESET)    Publica no GitHub Releases\n"
+	@printf "  $(C_CYAN)release$(C_RESET)             Cria tarball universal\n"
+	@printf "  $(C_CYAN)release-platforms$(C_RESET)   Cria tarballs por plataforma (com tools)\n"
+	@printf "  $(C_CYAN)release-platform-X$(C_RESET)  Cria tarball para plataforma X\n"
+	@printf "  $(C_CYAN)publish$(C_RESET)             Publica tarball universal no GitHub\n"
+	@printf "  $(C_CYAN)publish-platforms$(C_RESET)   Publica tarballs por plataforma no GitHub\n"
 	@echo ""
 	@printf "$(C_GREEN)Binaries$(C_RESET)\n"
 	@printf "  $(C_CYAN)binaries$(C_RESET)      Baixa binários para plataforma atual ($(PLATFORM))\n"
@@ -271,6 +274,59 @@ publish: ## Publica no GitHub
 		$(RELEASE_DIR)/$(NAME)-$(VERSION).tar.gz \
 		$(RELEASE_DIR)/$(NAME)-$(VERSION).sha256
 	$(OK) "Publicado: https://github.com/$(REPO)/releases/tag/v$(VERSION)"
+
+#-------------------------------------------------------------------------------
+# Platform-Specific Releases
+#-------------------------------------------------------------------------------
+PLATFORMS := linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64
+
+.PHONY: release-platform-%
+release-platform-%: ## Gera release para uma plataforma específica
+	$(INFO) "Criando release para $*..."
+	@./scripts/create-platform-release.sh "$*" "$(VERSION)" "$(RELEASE_DIR)"
+
+.PHONY: release-platforms
+release-platforms: validate build-all ## Gera releases para todas plataformas
+	$(INFO) "Criando releases para todas plataformas..."
+	@mkdir -p $(RELEASE_DIR)
+	@for platform in $(PLATFORMS); do \
+		echo ""; \
+		./scripts/create-platform-release.sh "$$platform" "$(VERSION)" "$(RELEASE_DIR)"; \
+	done
+	@echo ""
+	$(OK) "Releases criados para todas plataformas"
+	@ls -lh $(RELEASE_DIR)/$(NAME)-$(VERSION)-*.tar.gz $(RELEASE_DIR)/$(NAME)-$(VERSION)-*.zip 2>/dev/null || true
+
+.PHONY: publish-platforms
+publish-platforms: release-platforms ## Publica releases por plataforma no GitHub
+	$(INFO) "Publicando releases por plataforma no GitHub..."
+	@if ! command -v gh &>/dev/null; then \
+		printf "$(C_RED)✗$(C_RESET) gh CLI não instalado\n"; \
+		exit 1; \
+	fi
+	@git add VERSION CHANGELOG.md 2>/dev/null || true
+	@git commit -m "Release v$(VERSION)" 2>/dev/null || true
+	@git tag -a "v$(VERSION)" -m "Release v$(VERSION)" 2>/dev/null || true
+	@git push origin main --tags 2>/dev/null || true
+	@# Try to create release first, then upload if it exists
+	@gh release create "v$(VERSION)" \
+		--title "v$(VERSION) - Platform-specific releases" \
+		--notes "Platform-specific release with bundled tools (gum, yq, rg, fd, sd, sg)" \
+		$(RELEASE_DIR)/$(NAME)-$(VERSION)-*.tar.gz \
+		$(RELEASE_DIR)/$(NAME)-$(VERSION)-*.zip \
+		$(RELEASE_DIR)/$(NAME)-$(VERSION)-*.sha256 \
+		2>/dev/null || \
+	gh release upload "v$(VERSION)" \
+		$(RELEASE_DIR)/$(NAME)-$(VERSION)-*.tar.gz \
+		$(RELEASE_DIR)/$(NAME)-$(VERSION)-*.zip \
+		$(RELEASE_DIR)/$(NAME)-$(VERSION)-*.sha256 \
+		--clobber
+	$(OK) "Publicado: https://github.com/$(REPO)/releases/tag/v$(VERSION)"
+
+.PHONY: build-all
+build-all: ## Compila binários Go para todas plataformas
+	$(INFO) "Compilando binários Go..."
+	@./scripts/build.sh all
 
 .PHONY: deploy
 deploy: ## Commit, build, release e publish em um comando

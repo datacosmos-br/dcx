@@ -282,66 +282,43 @@ _install_remote() {
         fi
     done
 
-    # Declare extracted_dir before fallback
-    local extracted_dir=""
-    local from_git=false
-
     if [[ "$download_success" != "true" ]]; then
-        # Fallback: clone from git
-        _warn "Release tarball not found, cloning from repository..."
-        if _command_exists git; then
-            local clone_url="https://github.com/${PROJECT_REPO}.git"
-            local clone_dir="${TMP_DIR}/${PROJECT_NAME}-${version}"
+        _fatal "Failed to download ${PROJECT_NAME}. Check your internet connection or try a specific version."
+    fi
 
-            if git clone --depth 1 --branch "v${version}" "$clone_url" "$clone_dir" 2>/dev/null || \
-               git clone --depth 1 "$clone_url" "$clone_dir" 2>/dev/null; then
-                _log "Cloned from repository"
-                extracted_dir="$clone_dir"
-                download_success=true
-                from_git=true
-            else
-                _fatal "Failed to clone ${PROJECT_NAME}. Check your internet connection."
-            fi
+    # Optional: verify checksum
+    local checksum_url="${GITHUB_RELEASES}/v${version}/${tarball_name}.sha256"
+    local checksum_file="${TMP_DIR}/${tarball_name}.sha256"
+
+    if _download "$checksum_url" "$checksum_file" 1 2>/dev/null; then
+        local expected_checksum
+        expected_checksum=$(cat "$checksum_file" | awk '{print $1}')
+
+        _step "Verifying checksum..."
+        if _verify_checksum "$tarball_path" "$expected_checksum"; then
+            _log "Checksum verified"
         else
-            _fatal "Failed to download ${PROJECT_NAME} and git not available for fallback."
+            _fatal "Checksum verification failed! The download may be corrupted."
         fi
     fi
 
-    # Only verify/extract if downloaded (not cloned)
-    if [[ "$from_git" != "true" ]]; then
-        # Optional: verify checksum
-        local checksum_url="${GITHUB_RELEASES}/v${version}/${tarball_name}.sha256"
-        local checksum_file="${TMP_DIR}/${tarball_name}.sha256"
-
-        if _download "$checksum_url" "$checksum_file" 1 2>/dev/null; then
-            local expected_checksum
-            expected_checksum=$(cat "$checksum_file" | awk '{print $1}')
-
-            _step "Verifying checksum..."
-            if _verify_checksum "$tarball_path" "$expected_checksum"; then
-                _log "Checksum verified"
-            else
-                _fatal "Checksum verification failed! The download may be corrupted."
-            fi
-        fi
-
-        # Extract
-        _step "Extracting..."
-        if [[ "$tarball_name" == *.zip ]]; then
-            if _command_exists unzip; then
-                unzip -q "$tarball_path" -d "$TMP_DIR"
-            else
-                _fatal "unzip not found. Please install it."
-            fi
+    # Extract
+    _step "Extracting..."
+    if [[ "$tarball_name" == *.zip ]]; then
+        if _command_exists unzip; then
+            unzip -q "$tarball_path" -d "$TMP_DIR"
         else
-            tar -xzf "$tarball_path" -C "$TMP_DIR"
+            _fatal "unzip not found. Please install it."
         fi
-        _log "Extracted"
-
-        # Find extracted directory
-        extracted_dir=$(find "$TMP_DIR" -maxdepth 1 -type d -name "${PROJECT_NAME}-*" 2>/dev/null | head -1)
-        [[ -z "$extracted_dir" ]] && extracted_dir="$TMP_DIR"
+    else
+        tar -xzf "$tarball_path" -C "$TMP_DIR"
     fi
+    _log "Extracted"
+
+    # Find extracted directory
+    local extracted_dir
+    extracted_dir=$(find "$TMP_DIR" -maxdepth 1 -type d -name "${PROJECT_NAME}-*" 2>/dev/null | head -1)
+    [[ -z "$extracted_dir" ]] && extracted_dir="$TMP_DIR"
 
     # Install files (with atomic overwrites)
     _step "Installing to ${install_dir}..."

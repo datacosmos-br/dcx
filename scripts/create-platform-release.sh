@@ -337,7 +337,7 @@ _create_release() {
 
     for tool in $tools; do
         if _install_tool "$tool" "$platform" "${package_dir}/bin" "$staging_dir"; then
-            ((success_count++))
+            success_count=$((success_count + 1))
         else
             failed_tools+=("$tool")
         fi

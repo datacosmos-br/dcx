@@ -282,56 +282,150 @@ dc_plugin_list() {
 }
 
 #-------------------------------------------------------------------------------
-# dc_plugin_install - Install a plugin from GitHub
+# dc_plugin_install - Install plugin(s) from GitHub
 #-------------------------------------------------------------------------------
-dc_plugin_install() {
-    local repo="$1"  # e.g., datacosmos-br/dc-scripts-oracle
+# Usage:
+#   dcx plugin install oracle                    # Short name → dcx-oracle
+#   dcx plugin install datacosmos-br/dcx-oracle  # Full repo path
+#   dcx plugin install oracle,monitor,backup     # Multiple plugins
+#-------------------------------------------------------------------------------
 
-    if [[ -z "$repo" ]]; then
-        echo "Usage: dcx plugin install <github-repo>"
-        echo "Example: dcx plugin install datacosmos-br/dc-scripts-oracle"
-        return 1
+# Default plugin organization
+DC_PLUGIN_ORG="${DC_PLUGIN_ORG:-datacosmos-br}"
+
+# Resolve short plugin name to full repo
+_dc_resolve_plugin_name() {
+    local name="$1"
+
+    # If already has a slash, it's a full repo path
+    if [[ "$name" == *"/"* ]]; then
+        echo "$name"
+        return 0
     fi
+
+    # Short name → datacosmos-br/dcx-<name>
+    echo "${DC_PLUGIN_ORG}/dcx-${name}"
+}
+
+# Install single plugin
+_dc_install_single_plugin() {
+    local input="$1"
+    local repo
+
+    repo=$(_dc_resolve_plugin_name "$input")
+    local plugin_name
+    plugin_name=$(basename "$repo")
 
     # Determine install directory
     local dest
-    dest="${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/plugins/$(basename "$repo")"
+    dest="${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/plugins/${plugin_name}"
 
     if [[ -d "$dest" ]]; then
-        echo "Plugin already installed: $dest"
-        echo "Use 'dcx plugin update $(basename "$repo")' to update."
+        echo "Plugin already installed: $plugin_name"
+        echo "Use 'dcx plugin update $plugin_name' to update."
         return 1
     fi
 
-    echo "Installing plugin: $repo"
+    echo "Installing plugin: $plugin_name (from $repo)"
 
-    # Clone repository
-    local install_msg="Cloning $repo..."
-    local gum_bin="${GUM:-gum}"
-    if command -v "$gum_bin" &>/dev/null; then
-        "$gum_bin" spin --title "$install_msg" -- \
-            git clone --depth 1 "https://github.com/$repo.git" "$dest"
+    # Try install.sh first (preferred method)
+    local install_url="https://raw.githubusercontent.com/${repo}/main/install.sh"
+    local tmp_installer="/tmp/dcx-plugin-install-$$.sh"
+
+    if curl -fsSL "$install_url" -o "$tmp_installer" 2>/dev/null; then
+        echo "Using install.sh from $repo..."
+        local gum_bin="${GUM:-gum}"
+        if command -v "$gum_bin" &>/dev/null; then
+            "$gum_bin" spin --title "Installing $plugin_name..." -- \
+                bash "$tmp_installer" --prefix "${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/plugins"
+        else
+            bash "$tmp_installer" --prefix "${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/plugins"
+        fi
+        rm -f "$tmp_installer"
     else
-        echo "$install_msg"
-        git clone --depth 1 "https://github.com/$repo.git" "$dest"
+        # Fallback: git clone
+        echo "No install.sh found, using git clone..."
+        local install_msg="Cloning $repo..."
+        local gum_bin="${GUM:-gum}"
+        if command -v "$gum_bin" &>/dev/null; then
+            "$gum_bin" spin --title "$install_msg" -- \
+                git clone --depth 1 "https://github.com/$repo.git" "$dest"
+        else
+            echo "$install_msg"
+            git clone --depth 1 "https://github.com/$repo.git" "$dest"
+        fi
     fi
 
     if [[ ! -d "$dest" ]]; then
-        echo "Failed to clone: $repo"
+        echo "Failed to install: $plugin_name"
         return 1
     fi
 
     # Verify it's a valid plugin
     if [[ ! -f "$dest/plugin.yaml" && ! -f "$dest/plugin.yml" ]]; then
-        echo "Warning: No plugin.yaml found in $repo"
-        echo "This may not be a valid dc-scripts plugin."
+        echo "Warning: No plugin.yaml found in $plugin_name"
+        echo "This may not be a valid dcx plugin."
     fi
 
     echo ""
-    echo "Installed: $repo"
-    echo "Location: $dest"
+    echo "✓ Installed: $plugin_name"
+    echo "  Location: $dest"
+    return 0
+}
+
+dc_plugin_install() {
+    local input="$1"
+
+    if [[ -z "$input" || "$input" == "--help" || "$input" == "-h" ]]; then
+        cat << 'EOF'
+Usage: dcx plugin install <plugin> [plugin2] [plugin3] ...
+
+Plugin names:
+  oracle              Short name → datacosmos-br/dcx-oracle
+  org/repo            Full GitHub repo path
+  oracle,monitor      Comma-separated list
+
+Examples:
+  dcx plugin install oracle
+  dcx plugin install oracle monitor backup
+  dcx plugin install datacosmos-br/dcx-oracle
+  dcx plugin install oracle,monitor,backup
+EOF
+        return 0
+    fi
+
+    # Collect all plugins to install
+    local -a plugins=()
+
+    # Process all arguments
+    for arg in "$@"; do
+        # Split by comma if present
+        IFS=',' read -ra parts <<< "$arg"
+        for part in "${parts[@]}"; do
+            # Trim whitespace
+            part="${part#"${part%%[![:space:]]*}"}"
+            part="${part%"${part##*[![:space:]]}"}"
+            [[ -n "$part" ]] && plugins+=("$part")
+        done
+    done
+
+    # Install each plugin
+    local success=0 failed=0
+    for plugin in "${plugins[@]}"; do
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        if _dc_install_single_plugin "$plugin"; then
+            ((success++)) || true
+        else
+            ((failed++)) || true
+        fi
+    done
+
     echo ""
-    echo "Load with: dc_load_plugin '$dest'"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Installation complete: $success succeeded, $failed failed"
+
+    [[ $failed -eq 0 ]]
 }
 
 #-------------------------------------------------------------------------------
@@ -422,17 +516,24 @@ Usage: dcx plugin <command> [options]
 
 Commands:
   list [format]      List plugins (table, json, simple)
-  install <repo>     Install plugin from GitHub
+  install <plugin>   Install plugin(s) from GitHub
   remove <name>      Remove plugin
   update [name]      Update plugin(s)
   info <name>        Show plugin details
   load <name>        Load a plugin
   help               Show this help
 
+Install plugin names:
+  oracle             Short name → datacosmos-br/dcx-oracle
+  org/repo           Full GitHub repo path
+  oracle,monitor     Comma-separated list
+
 Examples:
   dcx plugin list
-  dcx plugin install datacosmos-br/dc-scripts-oracle
-  dcx plugin remove dc-scripts-oracle
+  dcx plugin install oracle
+  dcx plugin install oracle monitor backup
+  dcx plugin install datacosmos-br/dcx-oracle
+  dcx plugin remove oracle
   dcx plugin update
 EOF
             ;;

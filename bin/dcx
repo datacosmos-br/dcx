@@ -8,15 +8,15 @@
 
 set -euo pipefail
 
-# Determine DC_HOME
-if [[ -n "${DC_HOME:-}" ]]; then
-    : # Use provided DC_HOME
+# Determine DCX_HOME
+if [[ -n "${DCX_HOME:-}" ]]; then
+    : # Use provided DCX_HOME
 elif [[ -L "${BASH_SOURCE[0]}" ]]; then
-    DC_HOME="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+    DCX_HOME="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 else
-    DC_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    DCX_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fi
-export DC_HOME
+export DCX_HOME
 
 # Find Go binary
 _dcx_go_binary() {
@@ -24,13 +24,13 @@ _dcx_go_binary() {
     platform="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
 
     # 1. Development: binary in same dir as wrapper
-    [[ -x "$DC_HOME/bin/dcx-${platform}" ]] && echo "$DC_HOME/bin/dcx-${platform}" && return 0
+    [[ -x "$DCX_HOME/bin/dcx-${platform}" ]] && echo "$DCX_HOME/bin/dcx-${platform}" && return 0
 
-    # 2. Installed: binary in share/DCX/bin/
-    [[ -x "$DC_HOME/share/DCX/bin/dcx-${platform}" ]] && echo "$DC_HOME/share/DCX/bin/dcx-${platform}" && return 0
+    # 2. Installed: binary in share/dcx/bin/
+    [[ -x "$DCX_HOME/share/dcx/bin/dcx-${platform}" ]] && echo "$DCX_HOME/share/dcx/bin/dcx-${platform}" && return 0
 
-    # 3. Fallback: symlink dcx-go
-    [[ -x "$DC_HOME/bin/dcx-go" ]] && echo "$DC_HOME/bin/dcx-go" && return 0
+    # 3. Symlink dcx-go
+    [[ -x "$DCX_HOME/bin/dcx-go" ]] && echo "$DCX_HOME/bin/dcx-go" && return 0
 
     return 1
 }
@@ -52,9 +52,9 @@ fi
 #-------------------------------------------------------------------------------
 
 _dcx_plugin() {
-    if [[ -f "$DC_HOME/lib/plugin.sh" ]]; then
-        source "$DC_HOME/lib/core.sh" 2>/dev/null || true
-        source "$DC_HOME/lib/plugin.sh"
+    if [[ -f "$DCX_HOME/lib/plugin.sh" ]]; then
+        source "$DCX_HOME/lib/core.sh" 2>/dev/null || true
+        source "$DCX_HOME/lib/plugin.sh"
         dc_plugin_cmd "$@"
     else
         echo "Plugin module not available" >&2
@@ -88,7 +88,7 @@ case "${1:-help}" in
     source)
         # For sourcing in user scripts: eval "$(dcx source)"
         shift
-        echo "source '$DC_HOME/lib/core.sh'"
+        echo "source '$DCX_HOME/lib/core.sh'"
         for lib in "$@"; do
             echo "core_load $lib"
         done
@@ -96,7 +96,7 @@ case "${1:-help}" in
 
     env)
         # For shell eval: eval "$(dcx env)"
-        echo "export DC_HOME='$DC_HOME'"
+        echo "export DCX_HOME='$DCX_HOME'"
         echo "export GUM='${GUM:-}'"
         echo "export YQ='${YQ:-}'"
         echo "export RG='${RG:-}'"
@@ -114,7 +114,10 @@ case "${1:-help}" in
         if [[ -n "$DCX_GO" ]]; then
             exec "$DCX_GO" "$@"
         else
-            echo "ERROR: Go binary not found. Run 'scripts/build.sh' first." >&2
+            echo "ERROR: dcx binary not found at DCX_HOME=$DCX_HOME" >&2
+            echo "Expected: \$DCX_HOME/bin/dcx-\$(uname -s)-\$(uname -m)" >&2
+            echo "" >&2
+            echo "Reinstall with: curl -fsSL https://raw.githubusercontent.com/datacosmos-br/dcx/main/install.sh | bash -s -- --force" >&2
             exit 1
         fi
         ;;

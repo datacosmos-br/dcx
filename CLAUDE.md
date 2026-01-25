@@ -53,41 +53,70 @@ All variables use `DCX_` prefix:
 
 ### NO FALLBACK / NO BYPASS Policy
 
-**CRITICAL**: When developing for this project:
+**MANDATORY - ZERO TOLERANCE**
 
-1. **Never add fallback code** that hides problems
-   - If a download fails, fail clearly - don't silently clone from git
-   - If a dependency is missing, report it - don't skip the feature
-   - If a test fails, fix it - don't disable the test
+This is a core principle of this project. Any fallback, workaround, or bypass code is **FORBIDDEN**.
 
-2. **Always fix root cause**
-   - Release tarball missing? Upload it to the release
-   - API returning wrong data? Fix the API call
-   - Configuration broken? Fix the configuration
+#### What is forbidden:
 
-3. **No workarounds**
-   - Don't add "if this fails, try that" logic
-   - Don't catch errors and continue silently
-   - Don't use try/catch to hide failures
+1. **Fallback logic**
+   ```bash
+   # FORBIDDEN - Never do this
+   if ! download_tarball; then
+       git clone ...  # This hides the real problem
+   fi
+   ```
 
-4. **Fail fast and loud**
-   - Use `set -e` in bash scripts
-   - Return proper exit codes
-   - Log clear error messages
+2. **Silent error handling**
+   ```bash
+   # FORBIDDEN
+   some_command || true  # Hiding failures
+   some_command 2>/dev/null  # Hiding errors
+   ```
 
-### Example
+3. **Conditional bypasses**
+   ```bash
+   # FORBIDDEN
+   if ! binary_exists; then
+       echo "Binary not found, using alternative..."
+   fi
+   ```
 
-```bash
-# BAD - fallback hides the real problem
-if ! download_tarball; then
-    warn "Tarball not found, cloning from git..."
-    git clone ...
-fi
+#### What is required:
 
-# GOOD - fail clearly, fix root cause
-if ! download_tarball; then
-    fatal "Tarball not found. Ensure release was created with 'make release'"
-fi
-```
+1. **Fix root cause immediately**
+   - Binary missing in tarball? Include it in tarball
+   - API returning wrong data? Fix the API
+   - Test failing? Fix the code, not the test
 
-The solution is to ensure the tarball exists, not to add a workaround.
+2. **Fail fast and loud**
+   ```bash
+   # CORRECT
+   set -euo pipefail  # Always at top of scripts
+
+   if ! download_tarball; then
+       fatal "Tarball not found at $URL. Create release with 'make release' first."
+       exit 1
+   fi
+   ```
+
+3. **Clear error messages**
+   - Tell user exactly what failed
+   - Tell user how to fix it
+   - Never suggest workarounds
+
+#### Why this matters:
+
+- Fallbacks hide bugs that will resurface later
+- Workarounds create technical debt
+- Silent failures cause data corruption
+- Root cause fixes are permanent
+
+#### Memory rule for Claude:
+
+**BEFORE writing any code that handles failure, ASK:**
+- Am I hiding a problem or fixing it?
+- If the "alternative" works, why isn't it the primary path?
+- What is the ROOT CAUSE and how do I fix THAT?
+
+If you're about to write `|| true`, `2>/dev/null`, or "if this fails, try that" - STOP. Fix the root cause instead.

@@ -1,4 +1,4 @@
-# dc-scripts default configuration
+# dcx default configuration
 # These values are used when not overridden by user config
 
 # Logging
@@ -22,5 +22,5 @@ update:
 plugins:
   auto_load: true       # Auto-load discovered plugins
   dirs:                 # Plugin search directories
-    - "${DC_HOME}/plugins"
-    - "${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/plugins"
+    - "${DCX_HOME}/plugins"
+    - "${XDG_CONFIG_HOME:-$HOME/.config}/dcx/plugins"

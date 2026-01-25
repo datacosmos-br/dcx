@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #===============================================================================
-# dc-scripts/lib/update.sh - Auto-Update & Version Management
+# dcx/lib/update.sh - Auto-Update & Version Management
 #===============================================================================
 # Dependencies: curl/wget, gum (optional for UI)
 #===============================================================================
@@ -22,11 +22,11 @@ source "${BASH_SOURCE[0]%/*}/shared.sh"
 #===============================================================================
 
 dc_current_version() {
-    echo "$DC_VERSION"
+    echo "$DCX_VERSION"
 }
 
 dc_get_latest_version() {
-    local api_url="${DC_GITHUB_RELEASES}/latest"
+    local api_url="${DCX_GITHUB_RELEASES}/latest"
     local version=""
 
     if command -v curl &>/dev/null; then
@@ -39,7 +39,7 @@ dc_get_latest_version() {
 }
 
 dc_check_update() {
-    local current="$DC_VERSION"
+    local current="$DCX_VERSION"
 
     if [[ "$current" == "unknown" || "$current" == "0.0.0" ]]; then
         echo ""
@@ -70,10 +70,10 @@ dc_check_update() {
 dc_self_update() {
     local target_version="${1:-}"
 
-    echo "${DC_PROJECT_NAME} - Update"
+    echo "${DCX_PROJECT_NAME} - Update"
     echo "========================"
     echo ""
-    echo "Current version: v${DC_VERSION}"
+    echo "Current version: v${DCX_VERSION}"
 
     # Get latest if not specified
     if [[ -z "$target_version" ]]; then
@@ -89,7 +89,7 @@ dc_self_update() {
     echo "Latest version:  v${target_version}"
 
     # Check if update needed
-    if [[ "$DC_VERSION" == "$target_version" ]]; then
+    if [[ "$DCX_VERSION" == "$target_version" ]]; then
         echo ""
         echo "Already up to date!"
         return 0
@@ -109,7 +109,7 @@ dc_self_update() {
 
 _dc_perform_update() {
     local version="$1"
-    local dc_home="${DC_HOME}"
+    local dc_home="${DCX_HOME}"
 
     echo ""
 
@@ -134,8 +134,8 @@ _dc_perform_update() {
 #===============================================================================
 
 dc_check_binaries() {
-    local dc_home="${DC_HOME}"
-    local platform="${DC_PLATFORM}"
+    local dc_home="${DCX_HOME}"
+    local platform="${DCX_PLATFORM}"
 
     local missing=()
     local present=()
@@ -183,12 +183,12 @@ dc_check_binaries() {
 #===============================================================================
 
 dc_maybe_check_update() {
-    local dc_home="${DC_HOME}"
+    local dc_home="${DCX_HOME}"
     local last_check_file="$dc_home/.last_update_check"
-    local check_interval="${DC_UPDATE_CHECK_INTERVAL:-86400}"
+    local check_interval="${DCX_UPDATE_CHECK_INTERVAL:-86400}"
 
     # Skip if auto-check disabled
-    if [[ "${DC_UPDATE_AUTO_CHECK:-true}" == "false" ]]; then
+    if [[ "${DCX_UPDATE_AUTO_CHECK:-true}" == "false" ]]; then
         return 0
     fi
 
@@ -211,9 +211,9 @@ dc_maybe_check_update() {
         local latest
         latest=$(dc_get_latest_version 2>/dev/null)
 
-        if [[ -n "$latest" && "$DC_VERSION" != "$latest" && "$DC_VERSION" != "unknown" ]]; then
+        if [[ -n "$latest" && "$DCX_VERSION" != "$latest" && "$DCX_VERSION" != "unknown" ]]; then
             echo ""
-            echo "New version available: v$latest (current: v$DC_VERSION)"
+            echo "New version available: v$latest (current: v$DCX_VERSION)"
             echo "Run 'dcx update' to install."
             echo ""
         fi
@@ -234,7 +234,7 @@ dc_release_notes() {
         return 1
     fi
 
-    local url="${DC_GITHUB_RELEASES}/tags/v${version}"
+    local url="${DCX_GITHUB_RELEASES}/tags/v${version}"
 
     echo "Release notes for v$version:"
     echo ""

@@ -37,12 +37,12 @@ run_test "parallel_limit exists" "type parallel_limit &>/dev/null"
 run_test "parallel_cpu_count exists" "type parallel_cpu_count &>/dev/null"
 run_test "parallel_auto exists" "type parallel_auto &>/dev/null"
 
-# Test: DC_PARALLEL_MAX_JOBS default
-run_test "default max jobs" "[[ \"\$DC_PARALLEL_MAX_JOBS\" == \"4\" ]]"
+# Test: DCX_PARALLEL_MAX_JOBS default
+run_test "default max jobs" "[[ \"\$DCX_PARALLEL_MAX_JOBS\" == \"4\" ]]"
 
 # Test: parallel_limit changes default
 parallel_limit 8
-run_test "parallel_limit" "[[ \"\$DC_PARALLEL_MAX_JOBS\" == \"8\" ]]"
+run_test "parallel_limit" "[[ \"\$DCX_PARALLEL_MAX_JOBS\" == \"8\" ]]"
 parallel_limit 4
 
 # Test: parallel_cpu_count returns number

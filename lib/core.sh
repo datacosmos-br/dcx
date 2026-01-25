@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #===============================================================================
-# dc-scripts/lib/core.sh - Module System
+# dcx/lib/core.sh - Module System
 #===============================================================================
 # Requires: Go binary (dcx-go) for platform detection and binary discovery
 #===============================================================================
@@ -12,12 +12,12 @@ declare -r _DC_CORE_LOADED=1
 # PATHS
 #===============================================================================
 
-DC_HOME="${DC_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-DC_LIB_DIR="${DC_HOME}/lib"
-DC_BIN_DIR="${DC_HOME}/bin"
-DC_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts"
+DCX_HOME="${DCX_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+DCX_LIB_DIR="${DCX_HOME}/lib"
+DCX_BIN_DIR="${DCX_HOME}/bin"
+DCX_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dcx"
 
-export DC_HOME DC_LIB_DIR DC_BIN_DIR DC_CONFIG_DIR
+export DCX_HOME DCX_LIB_DIR DCX_BIN_DIR DCX_CONFIG_DIR
 
 #===============================================================================
 # GO BINARY (REQUIRED)
@@ -27,8 +27,8 @@ export DC_HOME DC_LIB_DIR DC_BIN_DIR DC_CONFIG_DIR
 _dc_go_binary() {
     local platform
     platform="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
-    [[ -x "$DC_BIN_DIR/dcx-${platform}" ]] && echo "$DC_BIN_DIR/dcx-${platform}" && return 0
-    [[ -x "$DC_BIN_DIR/dcx-go" ]] && echo "$DC_BIN_DIR/dcx-go" && return 0
+    [[ -x "$DCX_BIN_DIR/dcx-${platform}" ]] && echo "$DCX_BIN_DIR/dcx-${platform}" && return 0
+    [[ -x "$DCX_BIN_DIR/dcx-go" ]] && echo "$DCX_BIN_DIR/dcx-go" && return 0
     return 1
 }
 
@@ -43,8 +43,8 @@ dc_detect_platform() {
 }
 
 # Set platform variable (used by other modules)
-DC_PLATFORM=$(dc_detect_platform)
-export DC_PLATFORM
+DCX_PLATFORM=$(dc_detect_platform)
+export DCX_PLATFORM
 
 # Binary discovery via Go
 _dc_find_binary() {
@@ -117,27 +117,27 @@ dc_source() { core_load "$@"; }
 #===============================================================================
 
 _dc_register_builtin_modules() {
-    core_register_module "logging" "$DC_LIB_DIR/logging.sh" ""
-    core_register_module "runtime" "$DC_LIB_DIR/runtime.sh" "logging"
-    core_register_module "config" "$DC_LIB_DIR/config.sh" "runtime"
-    core_register_module "parallel" "$DC_LIB_DIR/parallel.sh" "runtime"
-    core_register_module "plugin" "$DC_LIB_DIR/plugin.sh" "config"
-    core_register_module "shared" "$DC_LIB_DIR/shared.sh" ""
+    core_register_module "logging" "$DCX_LIB_DIR/logging.sh" ""
+    core_register_module "runtime" "$DCX_LIB_DIR/runtime.sh" "logging"
+    core_register_module "config" "$DCX_LIB_DIR/config.sh" "runtime"
+    core_register_module "parallel" "$DCX_LIB_DIR/parallel.sh" "runtime"
+    core_register_module "plugin" "$DCX_LIB_DIR/plugin.sh" "config"
+    core_register_module "shared" "$DCX_LIB_DIR/shared.sh" ""
 }
 
 dc_init() {
-    [[ "${DC_INITIALIZED:-}" == "1" ]] && return 0
+    [[ "${DCX_INITIALIZED:-}" == "1" ]] && return 0
     _dc_register_builtin_modules
-    mkdir -p "$DC_CONFIG_DIR" 2>/dev/null || true
-    DC_VERSION=$(cat "$DC_HOME/VERSION" 2>/dev/null || echo "0.0.0")
-    export DC_VERSION DC_INITIALIZED=1
+    mkdir -p "$DCX_CONFIG_DIR" 2>/dev/null || true
+    DCX_VERSION=$(cat "$DCX_HOME/VERSION" 2>/dev/null || echo "0.0.0")
+    export DCX_VERSION DCX_INITIALIZED=1
 }
 
-dc_version() { echo "DCX v${DC_VERSION}"; }
+dc_version() { echo "dcx v${DCX_VERSION}"; }
 
 dc_load() {
     dc_init
     core_load logging runtime config parallel
 }
 
-[[ "${DC_AUTO_INIT:-1}" == "1" ]] && dc_init || true
+[[ "${DCX_AUTO_INIT:-1}" == "1" ]] && dc_init || true

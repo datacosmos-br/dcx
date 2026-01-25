@@ -8,9 +8,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 echo "Testing tools (Go binary)..."
 echo ""
 
-# Set DC_HOME for tests
-export DC_HOME="${LIB_DIR}/.."
-DCX_GO="$DC_HOME/bin/dcx-go"
+# Set DCX_HOME for tests
+export DCX_HOME="${LIB_DIR}/.."
+DCX_GO="$DCX_HOME/bin/dcx-go"
 
 # Skip if Go binary not available
 if [[ ! -x "$DCX_GO" ]]; then

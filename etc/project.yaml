@@ -1,11 +1,11 @@
-# DCX Project Configuration
+# dcx Project Configuration
 # Single source of truth for project constants
 # Used by: lib/constants.sh, Makefile, scripts/build-binaries.sh
 
 project:
-  name: DCX
+  name: dcx
   full_name: "Datacosmos Command eXecutor"
-  repo: datacosmos-br/dc-scripts
+  repo: datacosmos-br/dcx
   description: "A comprehensive bash library with bundled tools and CLI interface"
 
 # Tool versions for bundled binaries
@@ -28,5 +28,5 @@ platforms:
 # Installation paths
 paths:
   prefix: "${HOME}/.local"
-  share: "${prefix}/share/DCX"
+  share: "${prefix}/share/dcx"
   bin: "${prefix}/bin"

@@ -1,4 +1,4 @@
-# DCX - Datacosmos Command eXecutor
+# dcx - Datacosmos Command eXecutor
 
 A comprehensive bash library with bundled tools and CLI interface for enterprise automation workflows.
 
@@ -10,7 +10,7 @@ A comprehensive bash library with bundled tools and CLI interface for enterprise
   - **Rust tools**: ripgrep (rg), fd, sd, frawk, coreutils
   - **Static bash** for maximum portability
 - **Plugin system** - Extend with plugins from GitHub
-- **Auto-update** - Keep dc-scripts current
+- **Auto-update** - Keep dcx current
 - **Hierarchical config** - Defaults → global → local → env
 - **Structured logging** - JSON/text formats, per-module levels
 - **Report system** - Workflow tracking with markdown output
@@ -28,7 +28,7 @@ curl -fsSL https://raw.githubusercontent.com/datacosmos-br/dcx/main/install.sh |
 
 ```bash
 git clone https://github.com/datacosmos-br/dcx.git
-cd dc-scripts
+cd dcx
 make install
 ```
 
@@ -38,7 +38,7 @@ make install
 # Download latest release
 VERSION=0.0.1
 curl -fsSL "https://github.com/datacosmos-br/dcx/releases/download/v${VERSION}/dcx-${VERSION}.tar.gz" | tar xz
-cd dc-scripts-${VERSION}
+cd dcx-${VERSION}
 ./install.sh
 ```
 
@@ -74,7 +74,7 @@ dcx help
 
 ```bash
 #!/usr/bin/env bash
-source ~/.local/share/dc-scripts/lib/core.sh
+source ~/.local/share/dcx/lib/core.sh
 dc_load  # Loads all modules
 
 # Your script here...
@@ -84,7 +84,7 @@ dc_load  # Loads all modules
 
 ```bash
 #!/usr/bin/env bash
-source ~/.local/share/dc-scripts/lib/core.sh
+source ~/.local/share/dcx/lib/core.sh
 dc_source config    # Load only config module
 dc_source runtime   # Load runtime module
 dc_source logging   # Load logging module
@@ -318,10 +318,10 @@ dc_plugin_list json      # JSON format
 dc_plugin_list simple    # Simple list
 
 # Install from GitHub
-dc_plugin_install "datacosmos-br/dc-scripts-oracle"
+dc_plugin_install "datacosmos-br/dcx-oracle"
 
 # Remove plugin
-dc_plugin_remove "dc-scripts-oracle"
+dc_plugin_remove "dcx-oracle"
 
 # Update plugins
 dc_plugin_update          # All plugins
@@ -356,16 +356,16 @@ dc_release_notes "0.0.1"
 
 Config is loaded in order (later overrides earlier):
 1. **Defaults** - `$DC_HOME/etc/defaults.yaml`
-2. **System** - `/etc/dc-scripts/config.yaml`
-3. **User** - `~/.config/dc-scripts/config.yaml`
-4. **Installation** - `$DC_HOME/etc/dc-scripts.yaml`
-5. **Local** - `.dc-scripts/config.yaml` or `dc-scripts.yaml`
+2. **System** - `/etc/dcx/config.yaml`
+3. **User** - `~/.config/dcx/config.yaml`
+4. **Installation** - `$DC_HOME/etc/dcx.yaml`
+5. **Local** - `.dcx/config.yaml` or `dcx.yaml`
 6. **Environment** - `DC_*` variables
 
 ### Example Config
 
 ```yaml
-# ~/.config/dc-scripts/config.yaml
+# ~/.config/dcx/config.yaml
 log:
   level: info        # debug, info, warn, error, fatal
   format: text       # text, json
@@ -405,7 +405,7 @@ description: My awesome plugin
 author: Your Name
 
 requires:
-  dc-scripts: ">=0.0.1"
+  dcx: "==0.0.1"
   commands:
     - sqlplus
     - rman
@@ -419,14 +419,14 @@ modules:
 ### Bash
 
 ```bash
-source ~/.local/share/dc-scripts/bin/completions/dcx.bash
+source ~/.local/share/dcx/bin/completions/dcx.bash
 ```
 
 ### Zsh
 
 ```bash
 # Add to fpath
-fpath=(~/.local/share/dc-scripts/bin/completions $fpath)
+fpath=(~/.local/share/dcx/bin/completions $fpath)
 autoload -Uz compinit && compinit
 ```
 
@@ -452,7 +452,7 @@ make help
 ## Project Structure
 
 ```
-dc-scripts/
+dcx/
 ├── bin/
 │   ├── dcx              # CLI wrapper
 │   ├── completions/     # Shell completions

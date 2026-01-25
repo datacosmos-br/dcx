@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #===============================================================================
-# install.sh - DCX Installer
+# install.sh - dcx Installer
 #===============================================================================
 # Professional, resilient installer with:
 # - curl | bash compatibility
@@ -10,7 +10,7 @@
 # - Self-update capability
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/datacosmos-br/dc-scripts/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/datacosmos-br/dcx/main/install.sh | bash
 #   curl -fsSL ... | bash -s -- --prefix /custom/path --version 0.0.1
 #
 #   ./install.sh [--prefix PATH] [--version X.Y.Z] [--force] [--no-tools]
@@ -22,8 +22,8 @@ set -eo pipefail
 #===============================================================================
 # CONSTANTS
 #===============================================================================
-readonly PROJECT_NAME="${DC_PROJECT_NAME:-DCX}"
-readonly PROJECT_REPO="${DC_GITHUB_REPO:-datacosmos-br/dc-scripts}"
+readonly PROJECT_NAME="${DCX_PROJECT_NAME:-dcx}"
+readonly PROJECT_REPO="${DCX_GITHUB_REPO:-datacosmos-br/dcx}"
 readonly GITHUB_RAW="https://raw.githubusercontent.com/${PROJECT_REPO}/main"
 readonly GITHUB_API="https://api.github.com/repos/${PROJECT_REPO}"
 readonly GITHUB_RELEASES="https://github.com/${PROJECT_REPO}/releases/download"
@@ -517,8 +517,8 @@ ${BOLD}EXAMPLES:${NC}
     ${DIM}./install.sh --force${NC}
 
 ${BOLD}ENVIRONMENT:${NC}
-    DC_PROJECT_NAME    Override project name (default: DCX)
-    DC_GITHUB_REPO     Override repository (default: datacosmos-br/dc-scripts)
+    DCX_PROJECT_NAME    Override project name (default: dcx)
+    DCX_GITHUB_REPO     Override repository (default: datacosmos-br/dcx)
     NO_COLOR           Disable colored output
 
 EOF

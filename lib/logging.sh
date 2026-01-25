@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #===============================================================================
-# dc-scripts/lib/logging.sh - Structured Logging with Context
+# dcx/lib/logging.sh - Structured Logging with Context
 #===============================================================================
 # Dependencies: gum (optional, falls back to echo)
 # License: MIT
@@ -21,10 +21,10 @@ declare -gA _DC_LOG_LEVELS=(
 )
 
 # Default settings
-declare -g DC_LOG_LEVEL="${DC_LOG_LEVEL:-info}"
-declare -g DC_LOG_FILE="${DC_LOG_FILE:-}"
-declare -g DC_LOG_FORMAT="${DC_LOG_FORMAT:-text}"  # text or json
-declare -g DC_LOG_COLOR="${DC_LOG_COLOR:-auto}"    # auto, always, never
+declare -g DCX_LOG_LEVEL="${DCX_LOG_LEVEL:-info}"
+declare -g DCX_LOG_FILE="${DCX_LOG_FILE:-}"
+declare -g DCX_LOG_FORMAT="${DCX_LOG_FORMAT:-text}"  # text or json
+declare -g DCX_LOG_COLOR="${DCX_LOG_COLOR:-auto}"    # auto, always, never
 
 # Per-module log levels
 declare -gA _DC_MODULE_LOG_LEVELS=()
@@ -54,14 +54,14 @@ log() {
     _dc_should_log "$level" "$caller_file" || return 0
 
     # Format and output
-    if [[ "$DC_LOG_FORMAT" == "json" ]]; then
+    if [[ "$DCX_LOG_FORMAT" == "json" ]]; then
         _dc_log_json "$level" "$message" "$caller_func" "$caller_file" "$caller_line"
     else
         _dc_log_text "$level" "$message" "$caller_func" "$caller_file" "$caller_line"
     fi
 
     # Write to file if configured
-    if [[ -n "$DC_LOG_FILE" ]]; then
+    if [[ -n "$DCX_LOG_FILE" ]]; then
         _dc_log_to_file "$level" "$message" "$caller_func" "$caller_file" "$caller_line"
     fi
 }
@@ -73,7 +73,7 @@ _dc_should_log() {
     local level="$1"
     local module="$2"
 
-    local current_level="$DC_LOG_LEVEL"
+    local current_level="$DCX_LOG_LEVEL"
 
     # Check module-specific level
     if [[ -n "${_DC_MODULE_LOG_LEVELS[$module]:-}" ]]; then
@@ -94,7 +94,7 @@ _dc_log_text() {
 
     # Use gum if available for better formatting
     local gum_bin="${GUM:-gum}"
-    if command -v "$gum_bin" &>/dev/null && [[ "$DC_LOG_COLOR" != "never" ]]; then
+    if command -v "$gum_bin" &>/dev/null && [[ "$DCX_LOG_COLOR" != "never" ]]; then
         "$gum_bin" log --level "$level" "$message"
     else
         local timestamp
@@ -126,7 +126,7 @@ _dc_log_to_file() {
     timestamp=$(date -Iseconds)
 
     printf '%s [%s] %s (%s:%s:%s)\n' \
-        "$timestamp" "$level" "$message" "$file" "$func" "$line" >> "$DC_LOG_FILE"
+        "$timestamp" "$level" "$message" "$file" "$func" "$line" >> "$DCX_LOG_FILE"
 }
 
 #===============================================================================
@@ -154,7 +154,7 @@ die()  { log fatal "$@"; exit 1; }
 log_set_level() {
     local level="$1"
     if [[ -n "${_DC_LOG_LEVELS[$level]:-}" ]]; then
-        DC_LOG_LEVEL="$level"
+        DCX_LOG_LEVEL="$level"
     else
         log error "Unknown log level: $level"
         return 1
@@ -181,7 +181,7 @@ log_set_module_level() {
 #-------------------------------------------------------------------------------
 log_get_module_level() {
     local module="$1"
-    echo "${_DC_MODULE_LOG_LEVELS[$module]:-$DC_LOG_LEVEL}"
+    echo "${_DC_MODULE_LOG_LEVELS[$module]:-$DCX_LOG_LEVEL}"
 }
 
 #-------------------------------------------------------------------------------
@@ -197,7 +197,7 @@ log_init_file() {
         return 1
     }
 
-    DC_LOG_FILE="$file"
+    DCX_LOG_FILE="$file"
     log_info "Logging to file: $file"
 }
 

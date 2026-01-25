@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #===============================================================================
-# dc-scripts/lib/plugin.sh - Plugin Discovery & Loading
+# dcx/lib/plugin.sh - Plugin Discovery & Loading
 #===============================================================================
 # Dependencies: yq, gum (optional)
 # License: MIT
@@ -15,7 +15,7 @@ declare -r _DC_PLUGIN_LOADED=1
 #===============================================================================
 
 # Plugin search directories (in order of priority)
-declare -ga DC_PLUGIN_DIRS=()
+declare -ga DCX_PLUGIN_DIRS=()
 
 # Loaded plugins registry
 declare -gA _DC_LOADED_PLUGINS=()
@@ -31,23 +31,23 @@ declare -gA _DC_PLUGIN_CACHE=()
 # dc_init_plugin_dirs - Initialize plugin search directories
 #-------------------------------------------------------------------------------
 dc_init_plugin_dirs() {
-    DC_PLUGIN_DIRS=()
+    DCX_PLUGIN_DIRS=()
 
     # 1. Installation directory plugins
-    local dc_home="${DC_HOME:-}"
+    local dc_home="${DCX_HOME:-}"
     if [[ -n "$dc_home" && -d "$dc_home/plugins" ]]; then
-        DC_PLUGIN_DIRS+=("$dc_home/plugins")
+        DCX_PLUGIN_DIRS+=("$dc_home/plugins")
     fi
 
     # 2. User plugins ($XDG_CONFIG_HOME or ~/.config)
-    local user_plugins="${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/plugins"
-    [[ -d "$user_plugins" ]] && DC_PLUGIN_DIRS+=("$user_plugins")
+    local user_plugins="${XDG_CONFIG_HOME:-$HOME/.config}/dcx/plugins"
+    [[ -d "$user_plugins" ]] && DCX_PLUGIN_DIRS+=("$user_plugins")
 
     # 3. System plugins (optional)
-    [[ -d "/usr/local/share/dc-scripts/plugins" ]] && DC_PLUGIN_DIRS+=("/usr/local/share/dc-scripts/plugins")
+    [[ -d "/usr/local/share/dcx/plugins" ]] && DCX_PLUGIN_DIRS+=("/usr/local/share/dcx/plugins")
 
     # 4. Local project plugins
-    [[ -d ".dc-scripts/plugins" ]] && DC_PLUGIN_DIRS+=(".dc-scripts/plugins")
+    [[ -d ".dcx/plugins" ]] && DCX_PLUGIN_DIRS+=(".dcx/plugins")
 
     return 0
 }
@@ -59,9 +59,9 @@ dc_init_plugin_dirs() {
 #-------------------------------------------------------------------------------
 dc_discover_plugins() {
     # Initialize dirs if not done
-    [[ ${#DC_PLUGIN_DIRS[@]} -eq 0 ]] && dc_init_plugin_dirs
+    [[ ${#DCX_PLUGIN_DIRS[@]} -eq 0 ]] && dc_init_plugin_dirs
 
-    for dir in "${DC_PLUGIN_DIRS[@]}"; do
+    for dir in "${DCX_PLUGIN_DIRS[@]}"; do
         if [[ -d "$dir" ]]; then
             for plugin in "$dir"/*/plugin.yaml "$dir"/*/plugin.yml; do
                 if [[ -f "$plugin" ]]; then
@@ -128,7 +128,7 @@ dc_load_plugin() {
     local plugin_version
     plugin_version=$(dc_plugin_info "$plugin_dir" "version")
 
-    # Note: Version check (requires.dc-scripts) intentionally not implemented
+    # Note: Version check (requires.dcx) intentionally not implemented
     # YAGNI - implement when plugins actually specify minimum versions
 
     # Check command dependencies
@@ -147,7 +147,7 @@ dc_load_plugin() {
 
     # Add plugin lib to path
     if [[ -d "$plugin_dir/lib" ]]; then
-        DC_LIB_PATH="${DC_LIB_PATH:-}:$plugin_dir/lib"
+        DCX_LIB_PATH="${DCX_LIB_PATH:-}:$plugin_dir/lib"
     fi
 
     # Add plugin bin to PATH
@@ -166,7 +166,7 @@ dc_load_plugin() {
     _DC_PLUGIN_CACHE[$plugin_name]="$plugin_version"
 
     # Debug output
-    if [[ "${DC_DEBUG:-}" == "1" ]]; then
+    if [[ "${DCX_DEBUG:-}" == "1" ]]; then
         echo "Loaded plugin: $plugin_name v$plugin_version"
     fi
 
@@ -291,7 +291,7 @@ dc_plugin_list() {
 #-------------------------------------------------------------------------------
 
 # Default plugin organization
-DC_PLUGIN_ORG="${DC_PLUGIN_ORG:-datacosmos-br}"
+DCX_PLUGIN_ORG="${DCX_PLUGIN_ORG:-datacosmos-br}"
 
 # Resolve short plugin name to full repo
 _dc_resolve_plugin_name() {
@@ -304,7 +304,7 @@ _dc_resolve_plugin_name() {
     fi
 
     # Short name → datacosmos-br/dcx-<name>
-    echo "${DC_PLUGIN_ORG}/dcx-${name}"
+    echo "${DCX_PLUGIN_ORG}/dcx-${name}"
 }
 
 # Install single plugin
@@ -318,7 +318,7 @@ _dc_install_single_plugin() {
 
     # Determine install directory
     local dest
-    dest="${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/plugins/${plugin_name}"
+    dest="${XDG_CONFIG_HOME:-$HOME/.config}/dcx/plugins/${plugin_name}"
 
     if [[ -d "$dest" ]]; then
         echo "Plugin already installed: $plugin_name"
@@ -337,9 +337,9 @@ _dc_install_single_plugin() {
         local gum_bin="${GUM:-gum}"
         if command -v "$gum_bin" &>/dev/null; then
             "$gum_bin" spin --title "Installing $plugin_name..." -- \
-                bash "$tmp_installer" --prefix "${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/plugins"
+                bash "$tmp_installer" --prefix "${XDG_CONFIG_HOME:-$HOME/.config}/dcx/plugins"
         else
-            bash "$tmp_installer" --prefix "${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/plugins"
+            bash "$tmp_installer" --prefix "${XDG_CONFIG_HOME:-$HOME/.config}/dcx/plugins"
         fi
         rm -f "$tmp_installer"
     else

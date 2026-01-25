@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #===============================================================================
-# dc-scripts/lib/config.sh - Configuration Management via Go binary
+# dcx/lib/config.sh - Configuration Management via Go binary
 #===============================================================================
 # Requires: core.sh (for DCX_GO binary)
 # License: MIT
@@ -74,7 +74,7 @@ dc_config_cmd() {
     local subcmd="${1:-help}"
     shift 2>/dev/null || true
 
-    local config_file="${XDG_CONFIG_HOME:-$HOME/.config}/dc-scripts/config.yaml"
+    local config_file="${XDG_CONFIG_HOME:-$HOME/.config}/dcx/config.yaml"
 
     case "$subcmd" in
         get)

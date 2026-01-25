@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #===============================================================================
-# run_all_tests.sh - Test suite runner for dc-scripts
+# run_all_tests.sh - Test suite runner for dcx
 #===============================================================================
 
 set -euo pipefail
@@ -24,7 +24,7 @@ SUITES_PASSED=0
 SUITES_FAILED=0
 
 echo ""
-echo -e "${BOLD}dc-scripts Test Suite${NC}"
+echo -e "${BOLD}dcx Test Suite${NC}"
 echo "========================================"
 echo ""
 

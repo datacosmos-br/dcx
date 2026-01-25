@@ -8,8 +8,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 echo "Testing update.sh..."
 echo ""
 
-# Set DC_HOME for tests
-export DC_HOME="${LIB_DIR}/.."
+# Set DCX_HOME for tests
+export DCX_HOME="${LIB_DIR}/.."
 
 # Source update.sh
 source "${LIB_DIR}/update.sh"
@@ -19,9 +19,9 @@ run_test "update.sh loads" "true"
 run_test "_DC_UPDATE_LOADED set" "[[ -n \"\${_DC_UPDATE_LOADED:-}\" ]]"
 
 # Test: Constants defined
-run_test "DC_GITHUB_REPO defined" "[[ -n \"\${DC_GITHUB_REPO:-}\" ]]"
-run_test "DC_GITHUB_API defined" "[[ -n \"\${DC_GITHUB_API:-}\" ]]"
-run_test "DC_GITHUB_RELEASES defined" "[[ -n \"\${DC_GITHUB_RELEASES:-}\" ]]"
+run_test "DCX_GITHUB_REPO defined" "[[ -n \"\${DCX_GITHUB_REPO:-}\" ]]"
+run_test "DCX_GITHUB_API defined" "[[ -n \"\${DCX_GITHUB_API:-}\" ]]"
+run_test "DCX_GITHUB_RELEASES defined" "[[ -n \"\${DCX_GITHUB_RELEASES:-}\" ]]"
 
 # Test: Core functions exist
 run_test "dc_current_version exists" "type dc_current_version &>/dev/null"
@@ -34,9 +34,9 @@ run_test "dc_release_notes exists" "type dc_release_notes &>/dev/null"
 
 # Test: Platform detection from constants.sh
 run_test "dc_detect_platform exists" "type dc_detect_platform &>/dev/null"
-run_test "DC_PLATFORM defined" "[[ -n \"\${DC_PLATFORM:-}\" ]]"
+run_test "DCX_PLATFORM defined" "[[ -n \"\${DCX_PLATFORM:-}\" ]]"
 
-# Test: dc_current_version reads VERSION file (returns DC_VERSION)
+# Test: dc_current_version reads VERSION file (returns DCX_VERSION)
 run_test "dc_current_version" "[[ \"\$(dc_current_version)\" == \"0.0.1\" ]]"
 
 # Test: dc_detect_platform returns valid format
@@ -46,11 +46,11 @@ run_test "dc_detect_platform has os" "[[ \"\$platform\" =~ ^(linux|darwin|window
 run_test "dc_detect_platform has arch" "[[ \"\$platform\" =~ -(amd64|arm64|386)$ ]]"
 
 # Test: dc_check_update handles unknown version gracefully
-old_dc_home="$DC_HOME"
-DC_HOME="/nonexistent"
+old_dc_home="$DCX_HOME"
+DCX_HOME="/nonexistent"
 result=$(dc_check_update 2>/dev/null) || true
 run_test "dc_check_update handles unknown" "[[ -z \"\$result\" ]] || ! dc_check_update 2>/dev/null"
-DC_HOME="$old_dc_home"
+DCX_HOME="$old_dc_home"
 
 # Test: dc_check_binaries runs without error (may report missing)
 run_test "dc_check_binaries runs" "dc_check_binaries >/dev/null 2>&1 || true"
@@ -59,16 +59,16 @@ run_test "dc_check_binaries runs" "dc_check_binaries >/dev/null 2>&1 || true"
 output=$(dc_check_binaries 2>&1) || true
 run_test "dc_check_binaries shows platform" "[[ \"\$output\" == *'Platform:'* ]]"
 
-# Test: dc_maybe_check_update respects DC_UPDATE_AUTO_CHECK=false
-DC_UPDATE_AUTO_CHECK="false"
+# Test: dc_maybe_check_update respects DCX_UPDATE_AUTO_CHECK=false
+DCX_UPDATE_AUTO_CHECK="false"
 run_test "dc_maybe_check_update respects config" "dc_maybe_check_update"
-unset DC_UPDATE_AUTO_CHECK
+unset DCX_UPDATE_AUTO_CHECK
 
 # Test: dc_maybe_check_update checks interval
 test_setup
 echo "0.0.1" > "$TMP_DIR/VERSION"
-old_dc_home="$DC_HOME"
-DC_HOME="$TMP_DIR"
+old_dc_home="$DCX_HOME"
+DCX_HOME="$TMP_DIR"
 
 # Create recent check file (should skip)
 echo "$(date +%s)" > "$TMP_DIR/.last_update_check"
@@ -76,15 +76,15 @@ run_test "dc_maybe_check_update respects interval" "dc_maybe_check_update"
 
 # Create old check file (should check)
 echo "0" > "$TMP_DIR/.last_update_check"
-DC_UPDATE_CHECK_INTERVAL=1
+DCX_UPDATE_CHECK_INTERVAL=1
 run_test "dc_maybe_check_update old check" "dc_maybe_check_update"
 
-DC_HOME="$old_dc_home"
+DCX_HOME="$old_dc_home"
 
 # Test: Constants have expected values
-run_test "DC_GITHUB_REPO is datacosmos-br/dc-scripts" "[[ \"\$DC_GITHUB_REPO\" == \"datacosmos-br/dc-scripts\" ]]"
-run_test "DC_GITHUB_API URL format" "[[ \"\$DC_GITHUB_API\" == *'api.github.com'* ]]"
-run_test "DC_GITHUB_RELEASES URL format" "[[ \"\$DC_GITHUB_RELEASES\" == *'releases'* ]]"
+run_test "DCX_GITHUB_REPO is datacosmos-br/dcx" "[[ \"\$DCX_GITHUB_REPO\" == \"datacosmos-br/dcx\" ]]"
+run_test "DCX_GITHUB_API URL format" "[[ \"\$DCX_GITHUB_API\" == *'api.github.com'* ]]"
+run_test "DCX_GITHUB_RELEASES URL format" "[[ \"\$DCX_GITHUB_RELEASES\" == *'releases'* ]]"
 
 #-------------------------------------------------------------------------------
 # Network-dependent tests (skip if offline or rate-limited)

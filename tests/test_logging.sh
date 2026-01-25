@@ -15,7 +15,7 @@ source "${LIB_DIR}/logging.sh"
 run_test "logging.sh loads" "true"
 run_test "_DC_LOGGING_LOADED set" "[[ -n \"\${_DC_LOGGING_LOADED:-}\" ]]"
 run_test "_DC_LOG_LEVELS exists" "[[ -n \"\${_DC_LOG_LEVELS[info]:-}\" ]]"
-run_test "DC_LOG_LEVEL default is info" "[[ \"\${DC_LOG_LEVEL}\" == \"info\" ]]"
+run_test "DCX_LOG_LEVEL default is info" "[[ \"\${DCX_LOG_LEVEL}\" == \"info\" ]]"
 
 # Test: Core functions exist
 run_test "log exists" "type log &>/dev/null"
@@ -56,10 +56,10 @@ run_test "_dc_log_text exists" "type _dc_log_text &>/dev/null"
 run_test "_dc_log_json exists" "type _dc_log_json &>/dev/null"
 
 # Test: log_set_level works
-run_test "log_set_level debug" "log_set_level debug && [[ \"\$DC_LOG_LEVEL\" == \"debug\" ]]"
-run_test "log_set_level info" "log_set_level info && [[ \"\$DC_LOG_LEVEL\" == \"info\" ]]"
-run_test "log_set_level warn" "log_set_level warn && [[ \"\$DC_LOG_LEVEL\" == \"warn\" ]]"
-run_test "log_set_level error" "log_set_level error && [[ \"\$DC_LOG_LEVEL\" == \"error\" ]]"
+run_test "log_set_level debug" "log_set_level debug && [[ \"\$DCX_LOG_LEVEL\" == \"debug\" ]]"
+run_test "log_set_level info" "log_set_level info && [[ \"\$DCX_LOG_LEVEL\" == \"info\" ]]"
+run_test "log_set_level warn" "log_set_level warn && [[ \"\$DCX_LOG_LEVEL\" == \"warn\" ]]"
+run_test "log_set_level error" "log_set_level error && [[ \"\$DCX_LOG_LEVEL\" == \"error\" ]]"
 run_test "log_set_level rejects invalid" "! log_set_level invalid"
 
 # Test: log_set_module_level works
@@ -68,38 +68,38 @@ run_test "log_set_module_level" "log_set_module_level 'test.sh' 'debug'"
 # Test: log_get_module_level returns correct level
 log_set_module_level "test.sh" "warn"
 run_test "log_get_module_level" "[[ \"\$(log_get_module_level 'test.sh')\" == \"warn\" ]]"
-run_test "log_get_module_level fallback" "[[ \"\$(log_get_module_level 'unknown.sh')\" == \"\$DC_LOG_LEVEL\" ]]"
+run_test "log_get_module_level fallback" "[[ \"\$(log_get_module_level 'unknown.sh')\" == \"\$DCX_LOG_LEVEL\" ]]"
 
 # Test: _dc_should_log respects log levels
-DC_LOG_LEVEL="warn"
+DCX_LOG_LEVEL="warn"
 run_test "_dc_should_log filters debug" "! _dc_should_log debug test.sh"
 run_test "_dc_should_log filters info" "! _dc_should_log info test.sh"
 run_test "_dc_should_log allows warn" "_dc_should_log warn test.sh"
 run_test "_dc_should_log allows error" "_dc_should_log error test.sh"
-DC_LOG_LEVEL="info"
+DCX_LOG_LEVEL="info"
 
 # Test: log produces output
 run_test "log info output" "[[ -n \"\$(log info 'test message' 2>&1)\" ]]"
 run_test "log_info output" "[[ -n \"\$(log_info 'test message' 2>&1)\" ]]"
 
 # Test: JSON format
-DC_LOG_FORMAT="json"
+DCX_LOG_FORMAT="json"
 output=$(log info "test" 2>&1)
 run_test "JSON format has timestamp" "[[ \"\$output\" == *'\"timestamp\"'* ]]"
 run_test "JSON format has level" "[[ \"\$output\" == *'\"level\"'* ]]"
 run_test "JSON format has message" "[[ \"\$output\" == *'\"message\"'* ]]"
-DC_LOG_FORMAT="text"
+DCX_LOG_FORMAT="text"
 
 # Test: log_init_file creates directory and sets variable
 tmp_log="/tmp/dc-test-$$/test.log"
-run_test "log_init_file" "log_init_file \"\$tmp_log\" && [[ \"\$DC_LOG_FILE\" == \"\$tmp_log\" ]]"
+run_test "log_init_file" "log_init_file \"\$tmp_log\" && [[ \"\$DCX_LOG_FILE\" == \"\$tmp_log\" ]]"
 
 # Test: logging to file works
 echo "test" > "$tmp_log"
-DC_LOG_FILE="$tmp_log"
+DCX_LOG_FILE="$tmp_log"
 log info "file test message"
 run_test "log writes to file" "grep -q 'file test message' \"\$tmp_log\""
-DC_LOG_FILE=""
+DCX_LOG_FILE=""
 rm -rf "/tmp/dc-test-$$"
 
 # Test: log_separator produces output

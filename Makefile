@@ -1,5 +1,5 @@
 #===============================================================================
-# Makefile - DCX
+# Makefile - dcx
 #===============================================================================
 # Comandos organizados em 5 grupos:
 #   Development: lint, test, check, validate, clean
@@ -20,10 +20,10 @@ YQ := $(shell test -x bin/yq && echo bin/yq || (command -v yq >/dev/null 2>&1 &&
 
 # Read from YAML with fallbacks
 ifneq ($(YQ),)
-  NAME := $(shell $(YQ) -r '.project.name // "DCX"' etc/project.yaml 2>/dev/null || echo "DCX")
+  NAME := $(shell $(YQ) -r '.project.name // "dcx"' etc/project.yaml 2>/dev/null || echo "dcx")
   REPO := $(shell $(YQ) -r '.project.repo // "datacosmos-br/dcx"' etc/project.yaml 2>/dev/null || echo "datacosmos-br/dcx")
 else
-  NAME := DCX
+  NAME := dcx
   REPO := datacosmos-br/dcx
 endif
 
@@ -423,8 +423,8 @@ install: ## Instala versão de desenvolvimento em ~/.local
 	@# Copia dcx para PATH
 	@cp bin/dcx $(PREFIX)/bin/dcx
 	@chmod +x $(PREFIX)/bin/dcx
-	@# Configura DC_HOME
-	@sed -i "s|DC_HOME=.*|DC_HOME=\"$(INSTALL_DIR)\"|" $(PREFIX)/bin/dcx 2>/dev/null || true
+	@# Configura DCX_HOME
+	@sed -i "s|DCX_HOME=.*|DCX_HOME=\"$(INSTALL_DIR)\"|" $(PREFIX)/bin/dcx 2>/dev/null || true
 	$(OK) "Instalado em $(INSTALL_DIR)"
 	@echo ""
 	@printf "  Adicione ao seu ~/.bashrc ou ~/.zshrc:\n"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #===============================================================================
-# dc-scripts/lib/parallel.sh - Parallel Job Execution
+# dcx/lib/parallel.sh - Parallel Job Execution
 #===============================================================================
 # Version: 0.1.1
 # Dependencies: none (pure bash)
@@ -12,7 +12,7 @@
 declare -r _DC_PARALLEL_LOADED=1
 
 # Default max concurrent jobs
-declare -g DC_PARALLEL_MAX_JOBS="${DC_PARALLEL_MAX_JOBS:-4}"
+declare -g DCX_PARALLEL_MAX_JOBS="${DCX_PARALLEL_MAX_JOBS:-4}"
 
 #-------------------------------------------------------------------------------
 # parallel_run - Execute commands in parallel with job limit
@@ -24,7 +24,7 @@ declare -g DC_PARALLEL_MAX_JOBS="${DC_PARALLEL_MAX_JOBS:-4}"
 # Returns 0 if all commands succeeded, 1 otherwise.
 #-------------------------------------------------------------------------------
 parallel_run() {
-    local max_jobs="${1:-$DC_PARALLEL_MAX_JOBS}"
+    local max_jobs="${1:-$DCX_PARALLEL_MAX_JOBS}"
     shift
 
     local -a pids=()
@@ -162,7 +162,7 @@ parallel_wait_all() {
 # Usage: parallel_limit 8
 #-------------------------------------------------------------------------------
 parallel_limit() {
-    DC_PARALLEL_MAX_JOBS="$1"
+    DCX_PARALLEL_MAX_JOBS="$1"
 }
 
 #-------------------------------------------------------------------------------

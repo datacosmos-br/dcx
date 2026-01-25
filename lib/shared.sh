@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #===============================================================================
-# dc-scripts/lib/shared.sh - Shared Utility Functions
+# dcx/lib/shared.sh - Shared Utility Functions
 #===============================================================================
 # Functions shared between install.sh, update.sh, and Makefile
 # NOTE: Platform detection and constants are in lib/constants.sh
@@ -10,7 +10,7 @@
 [[ -n "${_DC_SHARED_LOADED:-}" ]] && return 0
 declare -r _DC_SHARED_LOADED=1
 
-# Load constants (provides dc_detect_platform, DC_GITHUB_REPO, etc.)
+# Load constants (provides dc_detect_platform, DCX_GITHUB_REPO, etc.)
 # shellcheck source=constants.sh
 source "${BASH_SOURCE[0]%/*}/constants.sh"
 
@@ -66,7 +66,7 @@ dc_copy_install_files() {
 
 dc_setup_binary_symlinks() {
     local install_dir="$1"
-    local platform="${2:-$DC_PLATFORM}"
+    local platform="${2:-$DCX_PLATFORM}"
 
     # Go tools
     for tool in gum yq; do
@@ -115,9 +115,9 @@ dc_extract_tarball() {
 dc_install_local() {
     local source_dir="$1"
     local prefix="${2:-$HOME/.local}"
-    local install_dir="${prefix}/share/${DC_PROJECT_NAME}"
+    local install_dir="${prefix}/share/${DCX_PROJECT_NAME}"
 
-    dc_log "Installing ${DC_PROJECT_NAME} v${DC_VERSION} from local source..."
+    dc_log "Installing ${DCX_PROJECT_NAME} v${DCX_VERSION} from local source..."
 
     # Create directories
     dc_create_install_dirs "$install_dir"
@@ -130,7 +130,7 @@ dc_install_local() {
     dc_setup_binary_symlinks "$install_dir"
 
     # Copy dcx wrapper to prefix/bin (only this is exposed to PATH)
-    # The wrapper auto-detects DC_HOME and finds binaries in share/DCX/bin/
+    # The wrapper auto-detects DCX_HOME and finds binaries in share/dcx/bin/
     if [[ -f "$install_dir/bin/dcx" ]]; then
         cp "$install_dir/bin/dcx" "${prefix}/bin/dcx"
         chmod +x "${prefix}/bin/dcx"
@@ -146,8 +146,8 @@ dc_install_local() {
 dc_install_version() {
     local version="$1"
     local target_dir="$2"
-    local repo="${3:-$DC_GITHUB_REPO}"
-    local platform="${DC_PLATFORM}"
+    local repo="${3:-$DCX_GITHUB_REPO}"
+    local platform="${DCX_PLATFORM}"
 
     # Create temp directory
     local tmp_dir
@@ -155,7 +155,7 @@ dc_install_version() {
     trap 'rm -rf "$tmp_dir"' EXIT
 
     # Determine download URLs
-    local name="${DC_PROJECT_NAME}"
+    local name="${DCX_PROJECT_NAME}"
     local platform_url="https://github.com/${repo}/releases/download/v${version}/${name}-${version}-${platform}.tar.gz"
     local full_url="https://github.com/${repo}/releases/download/v${version}/${name}-${version}.tar.gz"
 

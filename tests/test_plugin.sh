@@ -8,8 +8,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 echo "Testing plugin.sh..."
 echo ""
 
-# Set DC_HOME for tests
-export DC_HOME="${LIB_DIR}/.."
+# Set DCX_HOME for tests
+export DCX_HOME="${LIB_DIR}/.."
 
 # Test plugin directory
 TEST_PLUGIN_DIR="/tmp/dc-test-plugin-$$"
@@ -63,7 +63,7 @@ run_test "plugin.sh loads" "true"
 run_test "_DC_PLUGIN_LOADED set" "[[ -n \"\${_DC_PLUGIN_LOADED:-}\" ]]"
 
 # Test: Global arrays exist
-run_test "DC_PLUGIN_DIRS is array" "declare -p DC_PLUGIN_DIRS &>/dev/null"
+run_test "DCX_PLUGIN_DIRS is array" "declare -p DCX_PLUGIN_DIRS &>/dev/null"
 run_test "_DC_LOADED_PLUGINS is array" "declare -p _DC_LOADED_PLUGINS &>/dev/null"
 run_test "_DC_PLUGIN_CACHE is array" "declare -p _DC_PLUGIN_CACHE &>/dev/null"
 
@@ -87,8 +87,8 @@ run_test "dc_init_plugin_dirs runs" "true"
 # Setup test plugin
 setup_test_plugin
 
-# Override DC_PLUGIN_DIRS to use our test directory
-DC_PLUGIN_DIRS=("$TEST_PLUGIN_DIR")
+# Override DCX_PLUGIN_DIRS to use our test directory
+DCX_PLUGIN_DIRS=("$TEST_PLUGIN_DIR")
 
 # Test: dc_discover_plugins finds plugins
 discovered=$(dc_discover_plugins)

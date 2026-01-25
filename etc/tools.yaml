@@ -1,4 +1,4 @@
-# DCX Tools Configuration
+# dcx Tools Configuration
 # =============================================================================
 # Central registry of all bundled tools with versions and official download URLs
 # Used by: install.sh, dcx tools, scripts/create-platform-release.sh

@@ -55,5 +55,8 @@ bin/bash
 !bin/README.md
 !bin/.gitkeep
 !bin/completions/
+# Claude Code cache
+.claude/
+
 # Separate plugin repositories
 dcx-oracle/

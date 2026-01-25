@@ -450,6 +450,7 @@ _parse_args() {
     FORCE=false
     LOCAL_INSTALL=false
     HELP=false
+    PLUGINS=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -468,6 +469,10 @@ _parse_args() {
             --local|-l)
                 LOCAL_INSTALL=true
                 shift
+                ;;
+            --plugin|--plugins)
+                PLUGINS="${2:-}"
+                shift 2 || shift
                 ;;
             --help|-h)
                 HELP=true
@@ -500,12 +505,19 @@ ${BOLD}OPTIONS:${NC}
     -v, --version X.Y.Z   Install specific version (default: latest)
     -f, --force           Force reinstall even if already installed
     -l, --local           Install from local repository clone
+    --plugin NAMES        Install plugins (comma-separated: oracle,other)
     -u, --update          Self-update installer and run
     -h, --help            Show this help message
 
 ${BOLD}EXAMPLES:${NC}
     # Install latest version
     ${DIM}curl -fsSL https://raw.githubusercontent.com/${PROJECT_REPO}/main/install.sh | bash${NC}
+
+    # Install with oracle plugin
+    ${DIM}curl -fsSL ... | bash -s -- --plugin oracle${NC}
+
+    # Install with multiple plugins
+    ${DIM}curl -fsSL ... | bash -s -- --plugin oracle,other${NC}
 
     # Install specific version
     ${DIM}curl -fsSL ... | bash -s -- --version 0.0.1${NC}
@@ -522,6 +534,66 @@ ${BOLD}ENVIRONMENT:${NC}
     NO_COLOR           Disable colored output
 
 EOF
+}
+
+#===============================================================================
+# PLUGIN INSTALLATION
+#===============================================================================
+
+# Known plugin repositories
+declare -A PLUGIN_REPOS=(
+    ["oracle"]="datacosmos-br/dcx-oracle"
+)
+
+_install_plugin() {
+    local plugin_name="$1"
+    local plugin_repo="${PLUGIN_REPOS[$plugin_name]:-}"
+
+    if [[ -z "$plugin_repo" ]]; then
+        # Try default naming: datacosmos-br/dcx-{plugin}
+        plugin_repo="datacosmos-br/dcx-${plugin_name}"
+    fi
+
+    local plugin_install_url="https://raw.githubusercontent.com/${plugin_repo}/main/install.sh"
+
+    _step "Installing plugin: ${plugin_name}..."
+
+    if curl -fsSL "$plugin_install_url" 2>/dev/null | bash -s -- --skip-dcx; then
+        _log "Plugin '${plugin_name}' installed"
+        return 0
+    else
+        _warn "Failed to install plugin '${plugin_name}' from ${plugin_repo}"
+        return 1
+    fi
+}
+
+_install_plugins() {
+    local plugins_list="$1"
+
+    if [[ -z "$plugins_list" ]]; then
+        return 0
+    fi
+
+    echo ""
+    _info "Installing plugins..."
+
+    # Split comma-separated list
+    IFS=',' read -ra plugin_array <<< "$plugins_list"
+
+    local failed=0
+    for plugin in "${plugin_array[@]}"; do
+        # Trim whitespace
+        plugin="${plugin#"${plugin%%[![:space:]]*}"}"
+        plugin="${plugin%"${plugin##*[![:space:]]}"}"
+
+        if [[ -n "$plugin" ]]; then
+            _install_plugin "$plugin" || ((failed++))
+        fi
+    done
+
+    if [[ $failed -gt 0 ]]; then
+        _warn "$failed plugin(s) failed to install"
+    fi
 }
 
 #===============================================================================
@@ -558,6 +630,11 @@ main() {
     installed_version=$(cat "${PREFIX}/share/${PROJECT_NAME}/VERSION" 2>/dev/null || echo "$VERSION")
 
     _print_success "$PREFIX" "$installed_version"
+
+    # Install plugins if requested
+    if [[ -n "${PLUGINS:-}" ]]; then
+        _install_plugins "$PLUGINS"
+    fi
 }
 
 # Run main with all arguments

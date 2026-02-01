@@ -26,7 +26,7 @@ main() {
 
     # Check dependencies
     log info "Checking dependencies..."
-    need_cmds curl grep sed
+    core_need_cmds curl grep sed
 
     # Interactive selection
     log info "Select environment:"
@@ -41,9 +41,9 @@ main() {
     fi
 
     # Simulated work with spinner
-    spin "Preparing environment..." sleep 1
-    spin "Running checks..." sleep 1
-    spin "Finalizing..." sleep 1
+    core_spin "Preparing environment..." sleep 1
+    core_spin "Running checks..." sleep 1
+    core_spin "Finalizing..." sleep 1
 
     # Parallel tasks demonstration
     log info "Running parallel tasks..."

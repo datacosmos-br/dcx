@@ -280,6 +280,79 @@ test_error_handling() {
     run_test "cred_delete fails without file" "! cred_delete 'key/key/key' 2>/dev/null"
 }
 
+test_migration() {
+    create_test_cred_file
+    cred_open &>/dev/null
+
+    # Set up plain-text credentials in environment
+    export DB_ADMIN_PASSWORD="admin_secret"
+    export SOURCE_DB_PASSWORD="source_secret"
+
+    # Test that migration detects environment variables
+    # We can't fully test interactive prompts, but we can verify the function exists
+    run_test "cred_migrate exists" "type cred_migrate &>/dev/null"
+
+    # Test detection by checking if function outputs mention of found credentials
+    local migration_output
+    migration_output=$(echo "n\nn" | cred_migrate 2>&1)
+
+    run_test "migration detects DB_ADMIN_PASSWORD" "[[ \"$migration_output\" == *\"DB_ADMIN_PASSWORD\"* ]]"
+    run_test "migration detects SOURCE_DB_PASSWORD" "[[ \"$migration_output\" == *\"SOURCE_DB_PASSWORD\"* ]]"
+
+    # Test migration with 'yes' response (automated)
+    clean_test_cred
+    create_test_cred_file
+    cred_open &>/dev/null
+
+    # Migrate one credential with 'yes' response
+    migration_output=$(echo "y" | cred_migrate 2>&1)
+
+    run_test "migration shows migrated count" "[[ \"$migration_output\" == *\"Migrated:\"* ]]"
+    run_test "migration suggests unset commands" "[[ \"$migration_output\" == *\"unset\"* ]]"
+
+    # Cleanup env vars
+    unset DB_ADMIN_PASSWORD SOURCE_DB_PASSWORD
+}
+
+test_export() {
+    create_test_cred_file
+    cred_open &>/dev/null
+
+    # Set up test credentials
+    cred_set 'oracle/prod/password' 'prod_secret' &>/dev/null
+    cred_set 'oracle/prod/username' 'prod_user' &>/dev/null
+    cred_set 'mysql/dev/password' 'dev_secret' &>/dev/null
+
+    # Test export function exists
+    run_test "cred_export exists" "type cred_export &>/dev/null"
+
+    # Test export with prefix filter
+    local export_output
+    export_output=$(cred_export oracle/prod 2>/dev/null)
+
+    run_test "export outputs valid format" "[[ \"$export_output\" == *\"export \"* ]]"
+    run_test "export transforms key correctly" "[[ \"$export_output\" == *\"ORACLE_PROD_PASSWORD\"* ]]"
+    run_test "export includes username" "[[ \"$export_output\" == *\"ORACLE_PROD_USERNAME\"* ]]"
+    run_test "export excludes other services" "[[ \"$export_output\" != *\"MYSQL\"* ]]"
+
+    # Test key transformation
+    run_test "export uppercase transformation" "[[ \"$export_output\" =~ ORACLE_PROD_[A-Z]+ ]]"
+    run_test "export slash to underscore" "[[ \"$export_output\" =~ export\ [A-Z_]+=.* ]]"
+
+    # Test export is eval-safe
+    eval "$export_output"
+    run_test "exported var is set" "[[ -n \"\${ORACLE_PROD_PASSWORD:-}\" ]]"
+    run_test "exported value correct" "[[ \"\$ORACLE_PROD_PASSWORD\" == \"prod_secret\" ]]"
+
+    # Cleanup exported vars
+    unset ORACLE_PROD_PASSWORD ORACLE_PROD_USERNAME
+
+    # Test export without prefix (all credentials)
+    export_output=$(cred_export 2>/dev/null)
+    run_test "export all includes oracle" "[[ \"$export_output\" == *\"ORACLE_PROD_PASSWORD\"* ]]"
+    run_test "export all includes mysql" "[[ \"$export_output\" == *\"MYSQL_DEV_PASSWORD\"* ]]"
+}
+
 #===============================================================================
 # Run Tests
 #===============================================================================
@@ -295,6 +368,8 @@ describe "Delete Credentials" test_delete
 describe "Password Handling" test_password_handling
 describe "Encryption Roundtrip" test_encryption_roundtrip
 describe "Error Handling" test_error_handling
+describe "Migration" test_migration
+describe "Export" test_export
 
 # Cleanup
 clean_test_cred

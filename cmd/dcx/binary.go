@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // oracleBinaries is the set of Oracle tools that should be searched in ORACLE_HOME/bin first
@@ -149,7 +150,7 @@ func listBinaries() {
 		if err == nil {
 			pathDisplay = path
 			// Check if it's bundled or system
-			if filepath.HasPrefix(path, binDir) {
+			if strings.HasPrefix(path, binDir+string(filepath.Separator)) || path == binDir {
 				status = "bundled"
 			} else {
 				status = "system"

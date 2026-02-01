@@ -382,6 +382,176 @@ cred_delete() {
     return 0
 }
 
+# cred_migrate - Migrate plain-text credentials to secure storage
+# Usage: cred_migrate
+# Scans for known plain-text credential patterns and offers to migrate them
+# Returns: 0 on success
+cred_migrate() {
+    echo ""
+    echo "==================================================================="
+    echo "  CREDENTIAL MIGRATION"
+    echo "==================================================================="
+    echo ""
+    echo "Scanning for plain-text credentials..."
+    echo ""
+
+    local found=0
+    local migrated=0
+
+    # Check environment variables
+    local env_patterns=(
+        "DB_ADMIN_PASSWORD"
+        "SOURCE_DB_PASSWORD"
+        "NETWORK_LINK_PASSWORD"
+        "DB_PASSWORD"
+        "ORACLE_PASSWORD"
+    )
+
+    for env_var in "${env_patterns[@]}"; do
+        if [[ -n "${!env_var:-}" ]]; then
+            found=$((found + 1))
+            echo "Found: $env_var in environment"
+
+            # Suggest migration key based on variable name
+            local suggested_key
+            case "$env_var" in
+                DB_ADMIN_PASSWORD)
+                    suggested_key="oracle/default/admin_password"
+                    ;;
+                SOURCE_DB_PASSWORD)
+                    suggested_key="oracle/source/db_password"
+                    ;;
+                NETWORK_LINK_PASSWORD)
+                    suggested_key="oracle/default/network_link_password"
+                    ;;
+                *)
+                    suggested_key="oracle/default/${env_var,,}"
+                    ;;
+            esac
+
+            echo -n "  Migrate to '$suggested_key'? [Y/n] "
+            local response
+            read -r response
+            response="${response,,}"
+
+            if [[ -z "$response" || "$response" == "y" || "$response" == "yes" ]]; then
+                if cred_set "$suggested_key" "${!env_var}"; then
+                    migrated=$((migrated + 1))
+                    echo "  ✓ Migrated to secure storage"
+                else
+                    echo "  ✗ Migration failed" >&2
+                fi
+            else
+                echo "  Skipped"
+            fi
+            echo ""
+        fi
+    done
+
+    # Check for old Oracle keyring file (dcx-oracle's previous format)
+    if [[ -f "$HOME/.oracle_keyring.enc" ]]; then
+        found=$((found + 1))
+        echo "Found: ~/.oracle_keyring.enc (legacy format)"
+        echo "  Note: This file uses an incompatible encryption format"
+        echo "  You'll need to re-enter credentials manually"
+        echo ""
+    fi
+
+    # Check YAML config files for password fields
+    if [[ -d "${DCX_CONFIG_DIR:-$HOME/.config/dcx}" ]]; then
+        local config_files
+        config_files=$(find "${DCX_CONFIG_DIR:-$HOME/.config/dcx}" -name "*.yaml" 2>/dev/null)
+
+        if [[ -n "$config_files" ]]; then
+            while IFS= read -r config_file; do
+                if grep -q "password:" "$config_file" 2>/dev/null; then
+                    found=$((found + 1))
+                    echo "Found: Password fields in $config_file"
+                    echo "  Note: Manual migration required for YAML files"
+                    echo "  Use: cred_set <key> <password> then remove from YAML"
+                    echo ""
+                fi
+            done <<< "$config_files"
+        fi
+    fi
+
+    # Summary
+    echo "==================================================================="
+    echo "Migration complete:"
+    echo "  - Found: $found plain-text credential(s)"
+    echo "  - Migrated: $migrated to secure storage"
+    echo ""
+
+    if [[ $migrated -gt 0 ]]; then
+        echo "IMPORTANT: You can now unset these environment variables:"
+        echo ""
+        for env_var in "${env_patterns[@]}"; do
+            if [[ -n "${!env_var:-}" ]]; then
+                echo "  unset $env_var"
+            fi
+        done
+        echo ""
+        echo "Add these to your ~/.bashrc or ~/.profile to make permanent."
+    fi
+
+    echo "==================================================================="
+    echo ""
+
+    return 0
+}
+
+# cred_export - Export credentials as shell environment variables
+# Usage: cred_export [prefix]
+# Outputs: export statements for credentials matching prefix
+# Key transformation: oracle/prod/password → ORACLE_PROD_PASSWORD
+# Example: eval "$(cred_export oracle/prod)"
+cred_export() {
+    local prefix="${1:-}"
+
+    # Unlock if needed
+    if [[ $_CRED_UNLOCKED -ne 1 ]]; then
+        if ! cred_open; then
+            return 1
+        fi
+    fi
+
+    if [[ ! -f "$CRED_FILE" ]]; then
+        echo "[ERROR] Credentials file not found: $CRED_FILE" >&2
+        return 1
+    fi
+
+    # Get list of keys
+    local keys
+    if [[ -n "$prefix" ]]; then
+        keys=$(cred_list | grep "^${prefix}")
+    else
+        keys=$(cred_list)
+    fi
+
+    if [[ -z "$keys" ]]; then
+        echo "[ERROR] No credentials found matching: ${prefix:-*}" >&2
+        return 1
+    fi
+
+    # Export each credential
+    while IFS= read -r key; do
+        # Transform key: oracle/prod/password → ORACLE_PROD_PASSWORD
+        local env_var
+        env_var=$(echo "$key" | tr '/' '_' | tr '[:lower:]' '[:upper:]')
+
+        # Get value
+        local value
+        value=$(cred_get "$key" 2>/dev/null)
+
+        if [[ -n "$value" ]]; then
+            # Output export statement (shell-escaped)
+            printf 'export %s=%q\n' "$env_var" "$value"
+        fi
+    done <<< "$keys"
+
+    return 0
+}
+
 #===============================================================================
 # END: cred.sh
 #===============================================================================

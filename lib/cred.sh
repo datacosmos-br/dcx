@@ -174,38 +174,24 @@ _cred_read_header() {
     return 0
 }
 
-# _cred_encrypt_value - Encrypt a value with AES-256-GCM
+# _cred_encrypt_value - Encrypt a value with AES-256-CBC
 # Usage: _cred_encrypt_value "value"
-# Returns: iv:ciphertext:tag (base64 encoded)
+# Returns: base64 encoded encrypted value
 _cred_encrypt_value() {
     local value="$1"
 
-    # Generate random IV (12 bytes for GCM)
-    local iv
-    iv=$(openssl rand -hex 12)
-
-    # Encrypt with AES-256-GCM
-    # Output format: ciphertext:tag (both base64)
-    local encrypted
-    encrypted=$(echo -n "$value" | openssl enc -aes-256-gcm -K "$_CRED_MASTER_KEY" -iv "$iv" -base64 -A 2>/dev/null)
-
-    # Return iv:encrypted
-    echo "$iv:$encrypted"
+    # Encrypt with AES-256-CBC using PBKDF2
+    echo -n "$value" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt -base64 -pass "pass:${_CRED_MASTER_KEY}" 2>/dev/null
 }
 
 # _cred_decrypt_value - Decrypt a value
-# Usage: _cred_decrypt_value "iv:ciphertext:tag"
+# Usage: _cred_decrypt_value "encrypted_base64"
 # Returns: Decrypted value
 _cred_decrypt_value() {
     local encrypted="$1"
 
-    # Parse iv and ciphertext
-    local iv ciphertext
-    iv=$(echo "$encrypted" | cut -d: -f1)
-    ciphertext=$(echo "$encrypted" | cut -d: -f2-)
-
-    # Decrypt
-    echo "$ciphertext" | openssl enc -aes-256-gcm -d -K "$_CRED_MASTER_KEY" -iv "$iv" -base64 -A 2>/dev/null
+    # Decrypt with AES-256-CBC using PBKDF2
+    echo "$encrypted" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d -base64 -pass "pass:${_CRED_MASTER_KEY}" 2>/dev/null
 }
 
 #===============================================================================
@@ -300,9 +286,11 @@ cred_set() {
     local encrypted
     encrypted=$(_cred_encrypt_value "$value")
 
-    # Remove existing key if present
+    # Remove existing key if present and append new one
     if grep -q "^${key}:" "$CRED_FILE" 2>/dev/null; then
-        sed -i "/^${key}:/d" "$CRED_FILE"
+        # Create temp file without the old entry
+        grep -v "^${key}:" "$CRED_FILE" > "${CRED_FILE}.tmp"
+        mv "${CRED_FILE}.tmp" "$CRED_FILE"
     fi
 
     # Append new credential
@@ -386,8 +374,9 @@ cred_delete() {
         return 1
     fi
 
-    # Remove the line
-    sed -i "/^${key}:/d" "$CRED_FILE"
+    # Remove the line (using grep -v for portability)
+    grep -v "^${key}:" "$CRED_FILE" > "${CRED_FILE}.tmp"
+    mv "${CRED_FILE}.tmp" "$CRED_FILE"
 
     echo "[INFO] Credential deleted: $key"
     return 0

@@ -4,11 +4,25 @@
 #===============================================================================
 # Source este arquivo no início de cada teste:
 #   source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
+#
+# Features:
+#   - describe() blocks for Jest/RSpec-style test grouping
+#   - assert_match() for regex assertions
+#   - Auto-sources lib/core.sh (no need to source in each test)
+#   - Per-file timing (displayed in test_summary)
 #===============================================================================
+
+# Capture start time for per-file timing (use LC_NUMERIC=C for consistent decimals)
+_TEST_START_TIME=$(LC_NUMERIC=C date +%s.%N 2>/dev/null || date +%s)
 
 # Paths (disponíveis para todos os testes)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="${SCRIPT_DIR}/../lib"
+
+# Auto-source lib/core.sh (with guard to prevent double-loading)
+if [[ -z "${_DCX_CORE_LOADED:-}" ]]; then
+    source "${LIB_DIR}/core.sh"
+fi
 
 # Contadores globais
 TESTS_RUN=0
@@ -20,13 +34,27 @@ if [[ -t 1 ]]; then
     RED='\033[0;31m'
     GREEN='\033[0;32m'
     YELLOW='\033[1;33m'
+    BOLD='\033[1m'
     NC='\033[0m'
 else
     RED=''
     GREEN=''
     YELLOW=''
+    BOLD=''
     NC=''
 fi
+
+#-------------------------------------------------------------------------------
+# Test grouping (describe blocks)
+#-------------------------------------------------------------------------------
+
+describe() {
+    local name="$1"
+    shift
+    echo ""
+    echo -e "${BOLD}$name${NC}"
+    "$@"
+}
 
 #-------------------------------------------------------------------------------
 # Test assertion functions
@@ -94,6 +122,18 @@ assert_contains() {
     fi
 }
 
+assert_match() {
+    local pattern="$1"
+    local actual="$2"
+    local msg="${3:-should match pattern}"
+    TESTS_RUN=$((TESTS_RUN + 1))
+    if [[ "$actual" =~ $pattern ]]; then
+        test_pass "$msg"
+    else
+        test_fail "$msg (pattern: '$pattern', got: '$actual')"
+    fi
+}
+
 assert_true() {
     local cmd="$1"
     local msg="${2:-should succeed}"
@@ -142,6 +182,19 @@ assert_dir() {
 test_summary() {
     echo ""
     echo "----------------------------------------"
+
+    # Calculate elapsed time (use LC_NUMERIC=C to ensure consistent decimal separator)
+    local end_time elapsed
+    end_time=$(LC_NUMERIC=C date +%s.%N 2>/dev/null || date +%s)
+    if command -v bc &>/dev/null; then
+        elapsed=$(LC_NUMERIC=C echo "$end_time - $_TEST_START_TIME" | bc)
+        LC_NUMERIC=C printf "Elapsed: %.2fs\n" "$elapsed"
+    else
+        # Fallback for integer seconds if bc not available
+        elapsed=$((${end_time%.*} - ${_TEST_START_TIME%.*}))
+        echo "Elapsed: ${elapsed}s"
+    fi
+
     echo -e "Tests: ${TESTS_RUN} | ${GREEN}Passed: ${TESTS_PASSED}${NC} | ${RED}Failed: ${TESTS_FAILED}${NC}"
 
     if [[ $TESTS_FAILED -eq 0 ]]; then

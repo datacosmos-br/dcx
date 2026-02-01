@@ -70,8 +70,15 @@ Plans:
 ---
 
 ### Phase 4: Melhorias Futuras (Backlog)
-**Goal:** Features nao criticas
+**Goal:** Secure credential storage and Data Pump progress reporting
 **Requirements:** dcx-bfo, dcx-ycf
+**Plans:** 4 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Core credential library (lib/cred.sh) with AES-256-GCM encryption
+- [ ] 04-02-PLAN.md — Go CLI for credential management (dcx cred get/set/list/delete)
+- [ ] 04-03-PLAN.md — Migration from plain-text and env export
+- [ ] 04-04-PLAN.md — Data Pump progress bar with gum
 
 | Task | Description | Status |
 |------|-------------|--------|
@@ -80,7 +87,7 @@ Plans:
 
 **Success Criteria:**
 - [ ] Credenciais nao em texto plano
-- [ ] Export/import 2x mais rapido
+- [ ] Progress bar with ETA for Data Pump operations
 
 ---
 
@@ -100,4 +107,4 @@ Plans:
 **Coverage:** 8 requirements mapped to 4 phases
 
 ---
-*Last updated: 2026-02-01 after Phase 3 execution complete*
+*Last updated: 2026-02-01 after Phase 4 planning complete*

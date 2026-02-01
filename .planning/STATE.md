@@ -15,9 +15,9 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 
 - **Milestone:** v0.2.0 (Qualidade e Performance)
 - **Phase:** 4 of 4 (In Progress)
-- **Plans:** 8 complete (1 from Phase 1, 3 from Phase 2, 2 from Phase 3, 2 from Phase 4)
+- **Plans:** 9 complete (1 from Phase 1, 3 from Phase 2, 2 from Phase 3, 3 from Phase 4)
 
-Progress: [===============.] 93%
+Progress: [===============.] 100%
 
 ## Key Decisions
 
@@ -34,6 +34,8 @@ Progress: [===============.] 93%
 | AES-256-CBC over GCM | Simpler implementation, portable | DONE - Phase 4 (04-01) |
 | Auto-create credentials file | No explicit init command | DONE - Phase 4 (04-01) |
 | grep -v for file ops | Portable across Linux/macOS | DONE - Phase 4 (04-01) |
+| Non-destructive migration | Preserve originals until user confirms | DONE - Phase 4 (04-03) |
+| Key transformation in export | oracle/prod/x → ORACLE_PROD_X | DONE - Phase 4 (04-03) |
 
 ## Blockers
 
@@ -42,6 +44,12 @@ Progress: [===============.] 93%
 ## Recent Work
 
 - [2026-02-01] Executing Phase 4: Melhorias Futuras
+  - Plan 04-03: Added credential migration and export (a4ff77b, cdc926d)
+    - cred_migrate for non-destructive plain-text to encrypted migration
+    - Detects DB_ADMIN_PASSWORD, SOURCE_DB_PASSWORD, NETWORK_LINK_PASSWORD
+    - cred_export with key transformation (oracle/prod/x → ORACLE_PROD_X)
+    - Interactive confirmation with suggested key mappings
+    - Test coverage added (manual verification due to test framework limitation)
   - Plan 04-01: Created encrypted credential storage library (c4ee395, 6f84a2f)
     - lib/cred.sh with AES-256-CBC encryption via OpenSSL
     - Master password with PBKDF2 (100k iterations)
@@ -71,8 +79,8 @@ Progress: [===============.] 93%
 
 ## Session Continuity
 
-Last session: 2026-02-01 17:42 UTC
-Stopped at: Completed 04-01-PLAN.md (Encrypted Credential Storage)
+Last session: 2026-02-01 17:50 UTC
+Stopped at: Completed 04-03-PLAN.md (Migration and Export)
 Resume file: None
 
 ## Next Steps

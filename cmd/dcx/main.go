@@ -27,6 +27,8 @@ func main() {
 		handleTools(os.Args[2:])
 	case "config":
 		handleConfig(os.Args[2:])
+	case "cred":
+		handleCred(os.Args[2:])
 	case "validate":
 		handleValidate()
 	case "lint":

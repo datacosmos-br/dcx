@@ -7,8 +7,8 @@
 #===============================================================================
 
 # Prevent multiple sourcing
-[[ -n "${_DC_SHARED_LOADED:-}" ]] && return 0
-declare -r _DC_SHARED_LOADED=1
+[[ -n "${_DCX_SHARED_LOADED:-}" ]] && return 0
+declare -r _DCX_SHARED_LOADED=1
 
 # Load constants (provides dc_detect_platform, DCX_GITHUB_REPO, etc.)
 # shellcheck source=constants.sh

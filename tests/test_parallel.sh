@@ -25,7 +25,7 @@ source "${LIB_DIR}/parallel.sh"
 
 # Test: Module loads without error
 run_test "parallel.sh loads" "true"
-run_test "_DC_PARALLEL_LOADED set" "[[ -n \"\${_DC_PARALLEL_LOADED:-}\" ]]"
+run_test "_DCX_PARALLEL_LOADED set" "[[ -n \"\${_DCX_PARALLEL_LOADED:-}\" ]]"
 
 # Test: Functions exist
 run_test "parallel_run exists" "type parallel_run &>/dev/null"

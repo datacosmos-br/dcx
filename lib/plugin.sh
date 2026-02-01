@@ -7,8 +7,8 @@
 #===============================================================================
 
 # Prevent multiple sourcing
-[[ -n "${_DC_PLUGIN_LOADED:-}" ]] && return 0
-declare -r _DC_PLUGIN_LOADED=1
+[[ -n "${_DCX_PLUGIN_LOADED:-}" ]] && return 0
+declare -r _DCX_PLUGIN_LOADED=1
 
 #===============================================================================
 # GLOBAL VARIABLES
@@ -18,10 +18,10 @@ declare -r _DC_PLUGIN_LOADED=1
 declare -ga DCX_PLUGIN_DIRS=()
 
 # Loaded plugins registry
-declare -gA _DC_LOADED_PLUGINS=()
+declare -gA _DCX_LOADED_PLUGINS=()
 
 # Plugin metadata cache
-declare -gA _DC_PLUGIN_CACHE=()
+declare -gA _DCX_PLUGIN_CACHE=()
 
 #===============================================================================
 # PLUGIN DISCOVERY
@@ -120,7 +120,7 @@ dc_load_plugin() {
         return 1
     fi
 
-    if [[ -n "${_DC_LOADED_PLUGINS[$plugin_name]:-}" ]]; then
+    if [[ -n "${_DCX_LOADED_PLUGINS[$plugin_name]:-}" ]]; then
         return 0  # Already loaded
     fi
 
@@ -162,8 +162,8 @@ dc_load_plugin() {
     fi
 
     # Mark as loaded
-    _DC_LOADED_PLUGINS[$plugin_name]="$plugin_dir"
-    _DC_PLUGIN_CACHE[$plugin_name]="$plugin_version"
+    _DCX_LOADED_PLUGINS[$plugin_name]="$plugin_dir"
+    _DCX_PLUGIN_CACHE[$plugin_name]="$plugin_version"
 
     # Debug output
     if [[ "${DCX_DEBUG:-}" == "1" ]]; then
@@ -194,13 +194,13 @@ dc_load_all_plugins() {
 dc_unload_plugin() {
     local name="$1"
 
-    if [[ -z "${_DC_LOADED_PLUGINS[$name]:-}" ]]; then
+    if [[ -z "${_DCX_LOADED_PLUGINS[$name]:-}" ]]; then
         echo "Plugin not loaded: $name" >&2
         return 1
     fi
 
-    unset "_DC_LOADED_PLUGINS[$name]"
-    unset "_DC_PLUGIN_CACHE[$name]"
+    unset "_DCX_LOADED_PLUGINS[$name]"
+    unset "_DCX_PLUGIN_CACHE[$name]"
 
     echo "Unloaded plugin: $name (shell restart recommended)"
 }
@@ -241,7 +241,7 @@ dc_plugin_list() {
                 version=$(dc_plugin_info "$plugin_dir" "version")
                 desc=$(dc_plugin_info "$plugin_dir" "description")
                 local loaded="false"
-                [[ -n "${_DC_LOADED_PLUGINS[$name]:-}" ]] && loaded="true"
+                [[ -n "${_DCX_LOADED_PLUGINS[$name]:-}" ]] && loaded="true"
 
                 [[ "$first" == "true" ]] || echo ","
                 first=false
@@ -258,7 +258,7 @@ dc_plugin_list() {
                 local name
                 name=$(dc_plugin_info "$plugin_dir" "name")
                 local status="[ ]"
-                [[ -n "${_DC_LOADED_PLUGINS[$name]:-}" ]] && status="[x]"
+                [[ -n "${_DCX_LOADED_PLUGINS[$name]:-}" ]] && status="[x]"
                 echo "$status $name"
             done <<< "$plugins"
             ;;
@@ -273,7 +273,7 @@ dc_plugin_list() {
                 name=$(dc_plugin_info "$plugin_dir" "name")
                 version=$(dc_plugin_info "$plugin_dir" "version")
                 local loaded="No"
-                [[ -n "${_DC_LOADED_PLUGINS[$name]:-}" ]] && loaded="Yes"
+                [[ -n "${_DCX_LOADED_PLUGINS[$name]:-}" ]] && loaded="Yes"
 
                 printf "%-20s %-10s %-8s %s\n" "$name" "$version" "$loaded" "$plugin_dir"
             done <<< "$plugins"
@@ -442,7 +442,7 @@ dc_plugin_remove() {
 
     rm -rf "$plugin_dir"
     echo "Removed: $name"
-    unset "_DC_LOADED_PLUGINS[$name]" 2>/dev/null || true
+    unset "_DCX_LOADED_PLUGINS[$name]" 2>/dev/null || true
 }
 
 #-------------------------------------------------------------------------------

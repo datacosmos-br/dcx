@@ -6,8 +6,8 @@
 #===============================================================================
 
 # Prevent multiple sourcing
-[[ -n "${_DC_RUNTIME_LOADED:-}" ]] && return 0
-declare -r _DC_RUNTIME_LOADED=1
+[[ -n "${_DCX_RUNTIME_LOADED:-}" ]] && return 0
+declare -r _DCX_RUNTIME_LOADED=1
 
 #===============================================================================
 # VALIDATORS

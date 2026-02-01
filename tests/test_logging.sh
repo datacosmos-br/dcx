@@ -13,8 +13,8 @@ source "${LIB_DIR}/logging.sh"
 
 # Test: Module loads without error
 run_test "logging.sh loads" "true"
-run_test "_DC_LOGGING_LOADED set" "[[ -n \"\${_DC_LOGGING_LOADED:-}\" ]]"
-run_test "_DC_LOG_LEVELS exists" "[[ -n \"\${_DC_LOG_LEVELS[info]:-}\" ]]"
+run_test "_DCX_LOGGING_LOADED set" "[[ -n \"\${_DCX_LOGGING_LOADED:-}\" ]]"
+run_test "_DCX_LOG_LEVELS exists" "[[ -n \"\${_DCX_LOG_LEVELS[info]:-}\" ]]"
 run_test "DCX_LOG_LEVEL default is info" "[[ \"\${DCX_LOG_LEVEL}\" == \"info\" ]]"
 
 # Test: Core functions exist

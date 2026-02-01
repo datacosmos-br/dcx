@@ -13,11 +13,11 @@ func detectPlatform() string {
 	return fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH)
 }
 
-// getDCHome returns the DC_HOME directory
-// Priority: DC_HOME env var > executable location > default
+// getDCHome returns the DCX_HOME directory
+// Priority: DCX_HOME env var > executable location > default
 func getDCHome() string {
-	// 1. Use DC_HOME if set
-	if dcHome := os.Getenv("DC_HOME"); dcHome != "" {
+	// 1. Use DCX_HOME if set
+	if dcHome := os.Getenv("DCX_HOME"); dcHome != "" {
 		return dcHome
 	}
 
@@ -44,11 +44,11 @@ func getDCHome() string {
 }
 
 // getBinDir returns the bin directory path
-// Checks: 1) DC_HOME/bin (development), 2) DC_HOME/share/DCX/bin (installed)
+// Checks: 1) DCX_HOME/bin (development), 2) DCX_HOME/share/DCX/bin (installed)
 func getBinDir() string {
 	dcHome := getDCHome()
 
-	// 1. Development: bin/ in DC_HOME
+	// 1. Development: bin/ in DCX_HOME
 	devPath := filepath.Join(dcHome, "bin")
 	if _, err := os.Stat(devPath); err == nil {
 		// Check if Go binary exists there
@@ -69,11 +69,11 @@ func getBinDir() string {
 }
 
 // getEtcDir returns the etc directory path
-// Checks: 1) DC_HOME/etc (development), 2) DC_HOME/share/DCX/etc (installed)
+// Checks: 1) DCX_HOME/etc (development), 2) DCX_HOME/share/DCX/etc (installed)
 func getEtcDir() string {
 	dcHome := getDCHome()
 
-	// 1. Development: etc/ in DC_HOME
+	// 1. Development: etc/ in DCX_HOME
 	devPath := filepath.Join(dcHome, "etc")
 	if _, err := os.Stat(filepath.Join(devPath, "tools.yaml")); err == nil {
 		return devPath

@@ -230,7 +230,7 @@ _install_remote() {
         if [[ -n "$target_version" && "$existing_version" == "$target_version" && "$force" != "true" ]]; then
             _log "Already up to date (v${existing_version})"
             _print_success "$prefix" "$existing_version"
-            return 0
+            return 2  # Special code: already up-to-date, success already shown
         elif [[ -n "$target_version" && "$existing_version" != "$target_version" ]]; then
             _info "Updating: v${existing_version} → v${target_version}"
         fi
@@ -617,19 +617,21 @@ main() {
         script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || script_dir=""
     fi
 
+    local install_result=0
     if [[ "$LOCAL_INSTALL" == "true" || (-n "$script_dir" && -f "$script_dir/lib/shared.sh") ]]; then
         _info "Mode: Local installation"
         _install_local "$script_dir" "$PREFIX"
     else
         _info "Mode: Remote installation"
-        _install_remote "$PREFIX" "$VERSION" "$FORCE"
+        _install_remote "$PREFIX" "$VERSION" "$FORCE" || install_result=$?
     fi
 
-    # Get installed version for success message
-    local installed_version
-    installed_version=$(cat "${PREFIX}/share/${PROJECT_NAME}/VERSION" 2>/dev/null || echo "$VERSION")
-
-    _print_success "$PREFIX" "$installed_version"
+    # Only show success if not already shown (return code 2 = already up-to-date)
+    if [[ $install_result -ne 2 ]]; then
+        local installed_version
+        installed_version=$(cat "${PREFIX}/share/${PROJECT_NAME}/VERSION" 2>/dev/null || echo "$VERSION")
+        _print_success "$PREFIX" "$installed_version"
+    fi
 
     # Install plugins if requested
     if [[ -n "${PLUGINS:-}" ]]; then

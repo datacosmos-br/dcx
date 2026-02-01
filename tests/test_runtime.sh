@@ -18,7 +18,7 @@ source "${LIB_DIR}/runtime.sh"
 
 # Test: Module loads without error
 run_test "runtime.sh loads" "true"
-run_test "_DC_RUNTIME_LOADED set" "[[ -n \"\${_DC_RUNTIME_LOADED:-}\" ]]"
+run_test "_DCX_RUNTIME_LOADED set" "[[ -n \"\${_DCX_RUNTIME_LOADED:-}\" ]]"
 
 # Test: Validator functions exist
 run_test "need_cmd exists" "type need_cmd &>/dev/null"

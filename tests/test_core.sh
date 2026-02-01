@@ -24,6 +24,6 @@ run_test "dc_init succeeds" "dc_init"
 run_test "DCX_INITIALIZED is set" "[[ \"\${DCX_INITIALIZED:-}\" == \"1\" ]]"
 run_test "dc_version output" "[[ \"\$(dc_version)\" == \"dcx v0.0.1\" ]]"
 run_test "dc_require idempotent" "dc_require && dc_require"
-run_test "_DC_CORE_LOADED set" "[[ -n \"\${_DC_CORE_LOADED:-}\" ]]"
+run_test "_DCX_CORE_LOADED set" "[[ -n \"\${_DCX_CORE_LOADED:-}\" ]]"
 
 test_summary

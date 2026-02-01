@@ -60,12 +60,12 @@ source "${LIB_DIR}/plugin.sh"
 
 # Test: Module loads without error
 run_test "plugin.sh loads" "true"
-run_test "_DC_PLUGIN_LOADED set" "[[ -n \"\${_DC_PLUGIN_LOADED:-}\" ]]"
+run_test "_DCX_PLUGIN_LOADED set" "[[ -n \"\${_DCX_PLUGIN_LOADED:-}\" ]]"
 
 # Test: Global arrays exist
 run_test "DCX_PLUGIN_DIRS is array" "declare -p DCX_PLUGIN_DIRS &>/dev/null"
-run_test "_DC_LOADED_PLUGINS is array" "declare -p _DC_LOADED_PLUGINS &>/dev/null"
-run_test "_DC_PLUGIN_CACHE is array" "declare -p _DC_PLUGIN_CACHE &>/dev/null"
+run_test "_DCX_LOADED_PLUGINS is array" "declare -p _DCX_LOADED_PLUGINS &>/dev/null"
+run_test "_DCX_PLUGIN_CACHE is array" "declare -p _DCX_PLUGIN_CACHE &>/dev/null"
 
 # Test: Core functions exist
 run_test "dc_init_plugin_dirs exists" "type dc_init_plugin_dirs &>/dev/null"
@@ -119,20 +119,20 @@ run_test "dc_plugin_info works with .yml" "[[ \"\$yml_name\" == \"yml-plugin\" ]
 
 # Test: dc_load_plugin loads plugin
 dc_load_plugin "$TEST_PLUGIN_DIR/test-plugin" || true
-run_test "dc_load_plugin loads test-plugin" "[[ -n \"\${_DC_LOADED_PLUGINS[test-plugin]:-}\" ]]"
+run_test "dc_load_plugin loads test-plugin" "[[ -n \"\${_DCX_LOADED_PLUGINS[test-plugin]:-}\" ]]"
 
 # Test: Plugin's init.sh was executed
 run_test "Plugin init.sh executed" "[[ \"\${TEST_PLUGIN_LOADED:-}\" == \"1\" ]]"
 
 # Test: Plugin version cached
-run_test "Plugin version cached" "[[ \"\${_DC_PLUGIN_CACHE[test-plugin]}\" == \"1.0.0\" ]]"
+run_test "Plugin version cached" "[[ \"\${_DCX_PLUGIN_CACHE[test-plugin]}\" == \"1.0.0\" ]]"
 
 # Test: dc_load_plugin is idempotent
 run_test "dc_load_plugin idempotent" "dc_load_plugin \"$TEST_PLUGIN_DIR/test-plugin\""
 
 # Test: dc_unload_plugin works
 dc_unload_plugin "test-plugin" >/dev/null 2>&1 || true
-run_test "dc_unload_plugin removes from registry" "[[ -z \"\${_DC_LOADED_PLUGINS[test-plugin]:-}\" ]]"
+run_test "dc_unload_plugin removes from registry" "[[ -z \"\${_DCX_LOADED_PLUGINS[test-plugin]:-}\" ]]"
 
 # Test: dc_unload_plugin fails for not loaded plugin
 run_test "dc_unload_plugin fails for unloaded" "! dc_unload_plugin \"nonexistent-plugin\" 2>/dev/null"
@@ -171,7 +171,7 @@ run_test "dc_plugin_cmd info works" "[[ \"\$info_output\" == *'test-plugin'* ]]"
 run_test "dc_plugin_cmd info fails for nonexistent" "! dc_plugin_cmd info nonexistent 2>/dev/null"
 
 # Test: dc_plugin_cmd load
-unset "_DC_LOADED_PLUGINS[test-plugin]" 2>/dev/null || true
+unset "_DCX_LOADED_PLUGINS[test-plugin]" 2>/dev/null || true
 load_output=$(dc_plugin_cmd load test-plugin 2>&1) || true
 run_test "dc_plugin_cmd load works" "[[ \"\$load_output\" == *'Loaded'* ]]"
 
@@ -193,12 +193,12 @@ run_test "dc_plugin_remove fails without arg" "[[ \$_remove_ok -eq 1 ]]"
 run_test "dc_plugin_update runs" "dc_plugin_update >/dev/null 2>&1 || true"
 
 # Test: dc_load_all_plugins works
-unset "_DC_LOADED_PLUGINS[test-plugin]" 2>/dev/null || true
-unset "_DC_LOADED_PLUGINS[another-plugin]" 2>/dev/null || true
-unset "_DC_LOADED_PLUGINS[yml-plugin]" 2>/dev/null || true
+unset "_DCX_LOADED_PLUGINS[test-plugin]" 2>/dev/null || true
+unset "_DCX_LOADED_PLUGINS[another-plugin]" 2>/dev/null || true
+unset "_DCX_LOADED_PLUGINS[yml-plugin]" 2>/dev/null || true
 dc_load_all_plugins
-run_test "dc_load_all_plugins loads test-plugin" "[[ -n \"\${_DC_LOADED_PLUGINS[test-plugin]:-}\" ]]"
-run_test "dc_load_all_plugins loads another-plugin" "[[ -n \"\${_DC_LOADED_PLUGINS[another-plugin]:-}\" ]]"
-run_test "dc_load_all_plugins loads yml-plugin" "[[ -n \"\${_DC_LOADED_PLUGINS[yml-plugin]:-}\" ]]"
+run_test "dc_load_all_plugins loads test-plugin" "[[ -n \"\${_DCX_LOADED_PLUGINS[test-plugin]:-}\" ]]"
+run_test "dc_load_all_plugins loads another-plugin" "[[ -n \"\${_DCX_LOADED_PLUGINS[another-plugin]:-}\" ]]"
+run_test "dc_load_all_plugins loads yml-plugin" "[[ -n \"\${_DCX_LOADED_PLUGINS[yml-plugin]:-}\" ]]"
 
 test_summary

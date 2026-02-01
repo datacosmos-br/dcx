@@ -7,11 +7,11 @@
 #===============================================================================
 
 # Prevent multiple sourcing
-[[ -n "${_DC_LOGGING_LOADED:-}" ]] && return 0
-declare -r _DC_LOGGING_LOADED=1
+[[ -n "${_DCX_LOGGING_LOADED:-}" ]] && return 0
+declare -r _DCX_LOGGING_LOADED=1
 
 # Log levels (numeric for comparison)
-declare -gA _DC_LOG_LEVELS=(
+declare -gA _DCX_LOG_LEVELS=(
     [debug]=0
     [info]=1
     [success]=2
@@ -27,7 +27,7 @@ declare -g DCX_LOG_FORMAT="${DCX_LOG_FORMAT:-text}"  # text or json
 declare -g DCX_LOG_COLOR="${DCX_LOG_COLOR:-auto}"    # auto, always, never
 
 # Per-module log levels
-declare -gA _DC_MODULE_LOG_LEVELS=()
+declare -gA _DCX_MODULE_LOG_LEVELS=()
 
 #===============================================================================
 # CORE LOGGING FUNCTIONS
@@ -76,12 +76,12 @@ _dc_should_log() {
     local current_level="$DCX_LOG_LEVEL"
 
     # Check module-specific level
-    if [[ -n "${_DC_MODULE_LOG_LEVELS[$module]:-}" ]]; then
-        current_level="${_DC_MODULE_LOG_LEVELS[$module]}"
+    if [[ -n "${_DCX_MODULE_LOG_LEVELS[$module]:-}" ]]; then
+        current_level="${_DCX_MODULE_LOG_LEVELS[$module]}"
     fi
 
-    local level_num="${_DC_LOG_LEVELS[$level]:-1}"
-    local current_num="${_DC_LOG_LEVELS[$current_level]:-1}"
+    local level_num="${_DCX_LOG_LEVELS[$level]:-1}"
+    local current_num="${_DCX_LOG_LEVELS[$current_level]:-1}"
 
     [[ $level_num -ge $current_num ]]
 }
@@ -153,7 +153,7 @@ die()  { log fatal "$@"; exit 1; }
 #-------------------------------------------------------------------------------
 log_set_level() {
     local level="$1"
-    if [[ -n "${_DC_LOG_LEVELS[$level]:-}" ]]; then
+    if [[ -n "${_DCX_LOG_LEVELS[$level]:-}" ]]; then
         DCX_LOG_LEVEL="$level"
     else
         log error "Unknown log level: $level"
@@ -168,8 +168,8 @@ log_set_module_level() {
     local module="$1"
     local level="$2"
 
-    if [[ -n "${_DC_LOG_LEVELS[$level]:-}" ]]; then
-        _DC_MODULE_LOG_LEVELS[$module]="$level"
+    if [[ -n "${_DCX_LOG_LEVELS[$level]:-}" ]]; then
+        _DCX_MODULE_LOG_LEVELS[$module]="$level"
     else
         log error "Unknown log level: $level"
         return 1
@@ -181,7 +181,7 @@ log_set_module_level() {
 #-------------------------------------------------------------------------------
 log_get_module_level() {
     local module="$1"
-    echo "${_DC_MODULE_LOG_LEVELS[$module]:-$DCX_LOG_LEVEL}"
+    echo "${_DCX_MODULE_LOG_LEVELS[$module]:-$DCX_LOG_LEVEL}"
 }
 
 #-------------------------------------------------------------------------------

@@ -21,11 +21,11 @@ source "$PROJECT_DIR/lib/constants.sh"
 BIN_DIR="$PROJECT_DIR/bin"
 
 # Tool versions (from constants.sh or defaults)
-GUM_VERSION="${DC_TOOL_GUM_VERSION:-0.14.5}"
-YQ_VERSION="${DC_TOOL_YQ_VERSION:-4.44.3}"
-RG_VERSION="${DC_TOOL_RG_VERSION:-14.1.1}"
-FD_VERSION="${DC_TOOL_FD_VERSION:-10.2.0}"
-SD_VERSION="${DC_TOOL_SD_VERSION:-1.0.0}"
+GUM_VERSION="${DCX_TOOL_GUM_VERSION:-0.14.5}"
+YQ_VERSION="${DCX_TOOL_YQ_VERSION:-4.44.3}"
+RG_VERSION="${DCX_TOOL_RG_VERSION:-14.1.1}"
+FD_VERSION="${DCX_TOOL_FD_VERSION:-10.2.0}"
+SD_VERSION="${DCX_TOOL_SD_VERSION:-1.0.0}"
 
 #===============================================================================
 # HELPER FUNCTIONS
@@ -232,7 +232,7 @@ EOF
 
 main() {
     local cmd="all"
-    local platform="$DC_PLATFORM"
+    local platform="$DCX_PLATFORM"
     local all_platforms=false
 
     while [[ $# -gt 0 ]]; do

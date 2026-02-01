@@ -16,7 +16,7 @@ source "${LIB_DIR}/update.sh"
 
 # Test: Module loads without error
 run_test "update.sh loads" "true"
-run_test "_DC_UPDATE_LOADED set" "[[ -n \"\${_DC_UPDATE_LOADED:-}\" ]]"
+run_test "_DCX_UPDATE_LOADED set" "[[ -n \"\${_DCX_UPDATE_LOADED:-}\" ]]"
 
 # Test: Constants defined
 run_test "DCX_GITHUB_REPO defined" "[[ -n \"\${DCX_GITHUB_REPO:-}\" ]]"

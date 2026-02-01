@@ -6,8 +6,8 @@
 # Paths and platform detection are in core.sh
 #===============================================================================
 
-[[ -n "${_DC_CONSTANTS_LOADED:-}" ]] && return 0
-declare -r _DC_CONSTANTS_LOADED=1
+[[ -n "${_DCX_CONSTANTS_LOADED:-}" ]] && return 0
+declare -r _DCX_CONSTANTS_LOADED=1
 
 # Source core.sh for DCX_HOME, DCX_PLATFORM, etc.
 # shellcheck source=core.sh

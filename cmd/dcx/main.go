@@ -46,7 +46,7 @@ func printVersion() {
 
 	fmt.Printf("DCX v%s - Datacosmos Command eXecutor\n", Version)
 	fmt.Printf("Platform: %s\n", platform)
-	fmt.Printf("DC_HOME: %s\n", dcHome)
+	fmt.Printf("DCX_HOME: %s\n", dcHome)
 	fmt.Println()
 
 	// List bundled tools
@@ -92,7 +92,7 @@ Tools Commands:
   dcx tools check           Check if required tools are available
 
 Environment:
-  DC_HOME     Installation directory
+  DCX_HOME     Installation directory
 
 For more information: https://github.com/datacosmos-br/dcx
 `, Version)

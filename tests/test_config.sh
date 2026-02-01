@@ -37,7 +37,7 @@ source "${LIB_DIR}/config.sh"
 
 # Test: Module loads without error
 run_test "config.sh loads" "true"
-run_test "_DC_CONFIG_LOADED set" "[[ -n \"\${_DC_CONFIG_LOADED:-}\" ]]"
+run_test "_DCX_CONFIG_LOADED set" "[[ -n \"\${_DCX_CONFIG_LOADED:-}\" ]]"
 
 # Test: Core functions exist
 run_test "config_get exists" "type config_get &>/dev/null"

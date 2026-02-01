@@ -6,8 +6,8 @@
 #===============================================================================
 
 # Prevent multiple sourcing
-[[ -n "${_DC_UPDATE_LOADED:-}" ]] && return 0
-declare -r _DC_UPDATE_LOADED=1
+[[ -n "${_DCX_UPDATE_LOADED:-}" ]] && return 0
+declare -r _DCX_UPDATE_LOADED=1
 
 # Load core (provides dc_detect_platform via Go), constants, and shared functions
 # shellcheck source=core.sh

@@ -5,9 +5,6 @@
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 
-echo "Testing config.sh..."
-echo ""
-
 # Setup
 test_setup
 
@@ -31,54 +28,71 @@ app:
   debug: false
 EOF
 
-# Source modules
-source "${LIB_DIR}/core.sh"
+# Source config module (core.sh is auto-sourced by test_helpers.sh)
 source "${LIB_DIR}/config.sh"
 
-# Test: Module loads without error
-run_test "config.sh loads" "true"
-run_test "_DCX_CONFIG_LOADED set" "[[ -n \"\${_DCX_CONFIG_LOADED:-}\" ]]"
+#-------------------------------------------------------------------------------
+# Test Groups
+#-------------------------------------------------------------------------------
 
-# Test: Core functions exist
-run_test "config_get exists" "type config_get &>/dev/null"
-run_test "config_set exists" "type config_set &>/dev/null"
-run_test "config_has exists" "type config_has &>/dev/null"
-run_test "config_keys exists" "type config_keys &>/dev/null"
+test_module_loading() {
+    run_test "config.sh loads" "true"
+    run_test "_DCX_CONFIG_LOADED set" "[[ -n \"\${_DCX_CONFIG_LOADED:-}\" ]]"
+}
 
-# Test: config_get returns correct value
-result=$(config_get "${TMP_DIR}/test.yaml" "database.host")
-run_test "config_get value" "[[ \"$result\" == \"localhost\" ]]"
+test_core_functions() {
+    run_test "config_get exists" "type config_get &>/dev/null"
+    run_test "config_set exists" "type config_set &>/dev/null"
+    run_test "config_has exists" "type config_has &>/dev/null"
+    run_test "config_keys exists" "type config_keys &>/dev/null"
+}
 
-# Test: config_get returns default for missing key
-result=$(config_get "${TMP_DIR}/test.yaml" "missing.key" "default_value")
-run_test "config_get default" "[[ \"$result\" == \"default_value\" ]]"
+test_config_get() {
+    result=$(config_get "${TMP_DIR}/test.yaml" "database.host")
+    run_test "config_get value" "[[ \"$result\" == \"localhost\" ]]"
 
-# Test: config_get nested value
-result=$(config_get "${TMP_DIR}/test.yaml" "database.port")
-run_test "config_get nested" "[[ \"$result\" == \"5432\" ]]"
+    result=$(config_get "${TMP_DIR}/test.yaml" "database.port")
+    run_test "config_get nested" "[[ \"$result\" == \"5432\" ]]"
+}
 
-# Test: config_has returns 0 for existing key
-run_test "config_has existing" "config_has \"${TMP_DIR}/test.yaml\" \"database.host\""
+test_config_default() {
+    result=$(config_get "${TMP_DIR}/test.yaml" "missing.key" "default_value")
+    run_test "config_get default" "[[ \"$result\" == \"default_value\" ]]"
 
-# Test: config_has returns 1 for missing key
-run_test "config_has missing" "! config_has \"${TMP_DIR}/test.yaml\" \"missing.key\""
+    result=$(config_get "/nonexistent/file.yaml" "key" "fallback" || true)
+    run_test "config_get missing file" "[[ \"$result\" == \"fallback\" ]]"
+}
 
-# Test: config_set creates new key
-config_set "${TMP_DIR}/test.yaml" "new.key" "new_value"
-result=$(config_get "${TMP_DIR}/test.yaml" "new.key")
-run_test "config_set new key" "[[ \"$result\" == \"new_value\" ]]"
+test_config_has() {
+    run_test "config_has existing" "config_has \"${TMP_DIR}/test.yaml\" \"database.host\""
+    run_test "config_has missing" "! config_has \"${TMP_DIR}/test.yaml\" \"missing.key\""
+}
 
-# Test: config_set updates existing key
-config_set "${TMP_DIR}/test.yaml" "database.host" "newhost"
-result=$(config_get "${TMP_DIR}/test.yaml" "database.host")
-run_test "config_set update" "[[ \"$result\" == \"newhost\" ]]"
+test_config_set() {
+    config_set "${TMP_DIR}/test.yaml" "new.key" "new_value"
+    result=$(config_get "${TMP_DIR}/test.yaml" "new.key")
+    run_test "config_set new key" "[[ \"$result\" == \"new_value\" ]]"
 
-# Test: config_keys returns keys
-keys=$(config_keys "${TMP_DIR}/test.yaml" "database")
-run_test "config_keys" "[[ \"$keys\" == *\"host\"* ]]"
+    config_set "${TMP_DIR}/test.yaml" "database.host" "newhost"
+    result=$(config_get "${TMP_DIR}/test.yaml" "database.host")
+    run_test "config_set update" "[[ \"$result\" == \"newhost\" ]]"
+}
 
-# Test: config_get for missing file returns default
-result=$(config_get "/nonexistent/file.yaml" "key" "fallback" || true)
-run_test "config_get missing file" "[[ \"$result\" == \"fallback\" ]]"
+test_config_keys() {
+    keys=$(config_keys "${TMP_DIR}/test.yaml" "database")
+    run_test "config_keys" "[[ \"$keys\" == *\"host\"* ]]"
+}
+
+#-------------------------------------------------------------------------------
+# Run Tests
+#-------------------------------------------------------------------------------
+
+describe "Module Loading" test_module_loading
+describe "Core Functions" test_core_functions
+describe "Config Get" test_config_get
+describe "Config Default Values" test_config_default
+describe "Config Has" test_config_has
+describe "Config Set" test_config_set
+describe "Config Keys" test_config_keys
 
 test_summary

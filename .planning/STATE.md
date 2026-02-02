@@ -1,7 +1,7 @@
 # DCX Project State
 
-**Current Phase:** Phase 4 - Melhorias Futuras
-**Current Plan:** Completed 04-01-PLAN.md
+**Current Phase:** Phase 4 - Melhorias Futuras ✓ Complete
+**Current Plan:** All plans complete
 **Last Updated:** 2026-02-01
 
 ## Project Reference
@@ -9,15 +9,15 @@
 See: .planning/PROJECT.md (updated 2026-01-31)
 
 **Core value:** CLI modular com sistema de plugins para automacao enterprise
-**Current focus:** Phase 4 - Backlog (Melhorias Futuras)
+**Current focus:** Milestone v0.2.0 Complete - Ready for audit
 
 ## Position
 
-- **Milestone:** v0.2.0 (Qualidade e Performance)
-- **Phase:** 4 of 4 (In Progress)
-- **Plans:** 9 complete (1 from Phase 1, 3 from Phase 2, 2 from Phase 3, 3 from Phase 4)
+- **Milestone:** v0.2.0 (Qualidade e Performance) ✓ Complete
+- **Phase:** 4 of 6 (In Progress)
+- **Plans:** 10 complete, 2 in progress (Phases 5 & 6)
 
-Progress: [===============.] 100%
+Progress: [===========.....] 75%
 
 ## Key Decisions
 
@@ -36,14 +36,31 @@ Progress: [===============.] 100%
 | grep -v for file ops | Portable across Linux/macOS | DONE - Phase 4 (04-01) |
 | Non-destructive migration | Preserve originals until user confirms | DONE - Phase 4 (04-03) |
 | Key transformation in export | oracle/prod/x → ORACLE_PROD_X | DONE - Phase 4 (04-03) |
+| Shell out from Go CLI | Reuse lib/cred.sh, avoid reimplementation | DONE - Phase 4 (04-02) |
+| Ants vs Elephants | Optimize Data Pump by grouping small tables | DONE - Phase 5 |
+| External Wallet only | mkstore missing, consume existing wallets | DONE - Phase 6 |
 
 ## Blockers
 
-- **Pre-existing tools.yaml bug**: Go binary fails to parse tools.yaml (lines 57, 124). Affects 4 tests in test_tools.sh. Not blocking test framework refactoring.
+- **Potential tools.yaml/tools CLI issue**: A parsing or loading issue may exist in the Go CLI that can surface as test failures. Reproduce with the test runner and capture exact failing test names and stderr/stdout before attempting fixes. Do not rely on stale line numbers.
 
 ## Recent Work
 
-- [2026-02-01] Executing Phase 4: Melhorias Futuras
+- [2026-02-02] Completed Phase 6: Oracle Wallet Integration
+  - Plan 06-01: Implemented `oracle_wallet.sh` library
+    - Validates wallet directory and `cwallet.sso`
+    - Configures environment (TNS_ADMIN, WALLET_LOCATION)
+    - Verified with 5 unit tests
+- [2026-02-02] Completed Phase 5: Data Pump Optimization
+  - Plan 05-01: Implemented table categorization
+    - `dp_get_table_sizes` queries DBA_SEGMENTS
+    - `dp_categorize_tables` splits into Ants/Elephants
+    - Verified with 9 unit tests
+- [2026-02-01] Completed Phase 4: Melhorias Futuras
+  - Plan 04-02: Added Go CLI for credential management (7529fc1)
+    - dcx cred set/get/list/delete/export commands
+    - Shells out to lib/cred.sh functions
+    - Key format validation, JSON output, confirmation prompts
   - Plan 04-03: Added credential migration and export (a4ff77b, cdc926d)
     - cred_migrate for non-destructive plain-text to encrypted migration
     - Detects DB_ADMIN_PASSWORD, SOURCE_DB_PASSWORD, NETWORK_LINK_PASSWORD
@@ -79,14 +96,26 @@ Progress: [===============.] 100%
 
 ## Session Continuity
 
-Last session: 2026-02-01 17:50 UTC
-Stopped at: Completed 04-03-PLAN.md (Migration and Export)
-Resume file: None
+Last session: 2026-02-02 13:05 UTC
+Stopped at: OC Workflow context captured, plan created
+Resume file: .planning/OC-WORKFLOW-PLAN.md
+
+## Memory Context (Cross-Session)
+
+| ID | Type | Description |
+|----|------|-------------|
+| mem_1770048467273_m8e00wb1u | project-context | Project state snapshot |
+| mem_1770048476396_milrloqoi | architecture-decision | ADRs and patterns |
+| mem_1770048482599_j2e8k7mku | workflow-config | Beads and GSD config |
+| mem_1770048494147_sx65o1md6 | project-history | Key commits history |
 
 ## Next Steps
 
 1. ~~Execute remaining Phase 3 plans~~ ✓ Complete
 2. ~~Execute 04-04: Data Pump progress reporting~~ ✓ Complete
-3. Continue Phase 4 (Backlog: Keyring, dtcosmos export)
-4. Fix tools.yaml parsing bug (separate issue)
-5. Close beads issue dcx-zwp
+3. ~~Complete Phase 4 (Keyring, export)~~ ✓ Complete
+4. ~~Capture OC Workflow context~~ ✓ Complete (2026-02-02)
+5. **Audit milestone** - `/gsd-audit-milestone v0.2.0`
+6. Fix tools.yaml parsing bug (separate issue)
+7. Close beads issues dcx-bfo and dcx-ycf
+8. Plan v0.3.0 milestone (if audit passes)

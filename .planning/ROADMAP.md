@@ -69,25 +69,25 @@ Plans:
 
 ---
 
-### Phase 4: Melhorias Futuras (Backlog)
+### Phase 4: Melhorias Futuras (Backlog) ✓
 **Goal:** Secure credential storage and Data Pump progress reporting
 **Requirements:** dcx-bfo, dcx-ycf
-**Plans:** 4 plans
+**Completed:** 2026-02-01
 
 Plans:
-- [ ] 04-01-PLAN.md — Core credential library (lib/cred.sh) with AES-256-GCM encryption
-- [ ] 04-02-PLAN.md — Go CLI for credential management (dcx cred get/set/list/delete)
-- [ ] 04-03-PLAN.md — Migration from plain-text and env export
-- [ ] 04-04-PLAN.md — Data Pump progress bar with gum
+- [x] 04-01-PLAN.md — Core credential library (lib/cred.sh) with AES-256-CBC encryption (c4ee395)
+- [x] 04-02-PLAN.md — Go CLI for credential management (dcx cred get/set/list/delete) (7529fc1)
+- [x] 04-03-PLAN.md — Migration from plain-text and env export (a4ff77b)
+- [x] 04-04-PLAN.md — Data Pump progress bar with gum (73e0e98)
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 4.1 | Sistema de Keyring | ○ |
-| 4.2 | Otimizacao dtcosmos export | ○ |
+| 4.1 | Sistema de Keyring | ✓ |
+| 4.2 | Otimizacao dtcosmos export | ✓ |
 
 **Success Criteria:**
-- [ ] Credenciais nao em texto plano
-- [ ] Progress bar with ETA for Data Pump operations
+- [x] Credenciais nao em texto plano
+- [x] Progress bar with ETA for Data Pump operations
 
 ---
 
@@ -101,10 +101,10 @@ Plans:
 | dcx-uqy | Phase 2 | Complete |
 | dcx-rgt | Phase 2 | Complete |
 | dcx-zwp | Phase 3 | Complete |
-| dcx-bfo | Phase 4 | Pending |
-| dcx-ycf | Phase 4 | Pending |
+| dcx-bfo | Phase 4 | Complete |
+| dcx-ycf | Phase 4 | Complete |
 
 **Coverage:** 8 requirements mapped to 4 phases
 
 ---
-*Last updated: 2026-02-01 after Phase 4 planning complete*
+*Last updated: 2026-02-01 after Phase 4 execution complete*

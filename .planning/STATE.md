@@ -1,23 +1,31 @@
 # DCX Project State
 
-**Current Phase:** Phase 4 - Melhorias Futuras ✓ Complete
-**Current Plan:** All plans complete
-**Last Updated:** 2026-02-01
+**Current Milestone:** v0.2.x (Rescue)
+**Current Phase:** Phase 5 - Plugin Contract (Planned)
+**Current Plan:** 05-01-PLAN.md
+**Last Updated:** 2026-02-02
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-01-31)
 
 **Core value:** CLI modular com sistema de plugins para automacao enterprise
-**Current focus:** Milestone v0.2.0 Complete - Ready for audit
+**Current focus:** Restore architectural integrity (contract-first), then close security + perf gaps with evidence.
 
 ## Position
 
-- **Milestone:** v0.2.0 (Qualidade e Performance) ✓ Complete
-- **Phase:** 4 of 6 (In Progress)
-- **Plans:** 10 complete, 2 in progress (Phases 5 & 6)
+- **Milestone:** v0.2.x (Contract + Security + Perf Rescue)
+- **Phase:** 5 of 10 (Planned)
+- **Tracking:** Beads-first, evidence-based closes
 
-Progress: [===========.....] 75%
+Progress: [...............] 0%
+
+## Active Issues (Beads)
+
+- `dcx-ma6` (epic): contract + security + datapump perf rescue
+- `dcx-yh0` (P0): remove eval-based credential loading (RCE risk)
+- `dcx-9ie` (P1): define plugin contract + enforce preflight
+- `dcx-bg9` (P1): complete remaining dcx-ycf asks (skip-empty, precompute-subqueries decision, robust parsing)
 
 ## Key Decisions
 
@@ -43,6 +51,12 @@ Progress: [===========.....] 75%
 ## Blockers
 
 - **Potential tools.yaml/tools CLI issue**: A parsing or loading issue may exist in the Go CLI that can surface as test failures. Reproduce with the test runner and capture exact failing test names and stderr/stdout before attempting fixes. Do not rely on stale line numbers.
+
+## Next Actions (OC Workflow)
+
+1. Phase 5: Approve contract decision (no-fallback policy for production paths; standalone must be explicit)
+2. Phase 6: Remove `eval` from credential loading and add redaction policy
+3. Phase 8: Complete Data Pump requirements (skip-empty + precompute-subqueries decision) with evidence
 
 ## Recent Work
 

@@ -108,3 +108,90 @@ Plans:
 
 ---
 *Last updated: 2026-02-01 after Phase 4 execution complete*
+
+---
+
+## Milestone v0.2.x: Plugin Contract + Security + Data Pump Rescue (OC Workflow)
+
+**Goal:** Make `dcx` + `dcx-oracle` scalable for more plugins by enforcing an explicit plugin contract, removing high-risk security surfaces, and completing Data Pump performance requirements with evidence.
+
+**Tracking (Beads):**
+- `dcx-ma6` (epic) contract + security + perf rescue
+- `dcx-yh0` (P0) remove eval-based credential loading
+- `dcx-9ie` (P1) define contract + enforce preflight
+- `dcx-bg9` (P1) complete dcx-ycf remainder (skip-empty, precompute-subqueries decision, robust parsing)
+
+### Phase 5: Plugin Contract (Architecture)
+**Goal:** Define and approve a strict, testable contract between core and plugins.
+
+Plans:
+- [ ] 05-01-PLAN.md — Write contract doc + decision on no-fallback policy
+
+**Success Criteria:**
+- [ ] Contract doc exists and is approved
+- [ ] Explicit policy: no-fallback for production paths (standalone explicit)
+- [ ] Stdout/stderr discipline defined
+
+---
+
+### Phase 6: Security Hardening (Secrets as Data)
+**Goal:** Remove code-execution surfaces (`eval`), enforce redaction, and lock down db-link identifiers.
+
+Plans:
+- [ ] 06-01-PLAN.md — Replace `eval` with allowlisted parsing / structured export
+- [ ] 06-02-PLAN.md — Logging redaction and no-secret output policy
+
+**Success Criteria:**
+- [ ] No `eval`/`source` of credential material
+- [ ] Secrets never appear in logs
+
+---
+
+### Phase 7: Config + Fallback Alignment
+**Goal:** Make config precedence deterministic; ban silent fallbacks for production operations.
+
+Plans:
+- [ ] 07-01-PLAN.md — Preflight validation and explicit standalone mode
+
+**Success Criteria:**
+- [ ] Preflight fails fast before side effects
+- [ ] Standalone requires explicit opt-in
+
+---
+
+### Phase 8: Data Pump Optimization Completion
+**Goal:** Finish remaining `dcx-ycf` asks with correctness and evidence.
+
+Plans:
+- [ ] 08-01-PLAN.md — Robust parfile parsing (TABLES/SCHEMAS), schema derivation fix
+- [ ] 08-02-PLAN.md — Implement skip-empty behavior
+- [ ] 08-03-PLAN.md — Decide/implement precompute-subqueries (or formally de-scope)
+
+**Success Criteria:**
+- [ ] `--optimize` correct for wallet (`/@...`) connections
+- [ ] skip-empty implemented and tested
+- [ ] precompute-subqueries decision documented
+
+---
+
+### Phase 9: Versioning + Release Integrity
+**Goal:** Make core releases reproducible against a pinned plugin version.
+
+Plans:
+- [ ] 09-01-PLAN.md — Choose pinning model (registry/pin recommended) and add CI gate
+
+**Success Criteria:**
+- [ ] Plugin version surfaced in `dcx version` or `dcx oracle version`
+- [ ] CI rejects drift/unpinned plugin version
+
+---
+
+### Phase 10: Evidence-Based Audit & Close
+**Goal:** Produce a single audit report mapping requirements to evidence.
+
+Plans:
+- [ ] 10-01-PLAN.md — Write audit report and verify all success criteria
+
+**Success Criteria:**
+- [ ] `docs/audits/v0.2.x-contract-security-perf.md` complete
+- [ ] Beads issues closed with evidence

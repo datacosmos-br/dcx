@@ -104,6 +104,7 @@ _dc_load_module() {
     for dep in $deps; do
         _dc_load_module "$dep" || return 1
     done
+    # shellcheck disable=SC1090 # module registry resolves the sourced file before loading it.
     source "$file" || { echo "ERROR: Failed to load: $module" >&2; return 1; }
     _DCX_MODULE_LOADED[$module]=1
 }

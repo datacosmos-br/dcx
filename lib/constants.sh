@@ -10,7 +10,7 @@
 declare -r _DCX_CONSTANTS_LOADED=1
 
 # Source core.sh for DCX_HOME, DCX_PLATFORM, etc.
-# shellcheck source=core.sh
+# shellcheck source=lib/core.sh
 source "${BASH_SOURCE[0]%/*}/core.sh"
 
 # DCX_ETC_DIR (not in core.sh)

@@ -70,7 +70,7 @@ _cred_init_internal() {
 
     # Hash recovery key for storage
     local recovery_hash
-    recovery_hash=$(echo -n "$recovery_key" | openssl dgst -sha256 -binary | openssl base64)
+    recovery_hash=$(printf '%s' "$recovery_key" | openssl dgst -sha256 -binary | openssl base64)
 
     # Display recovery key (ONCE)
     echo ""
@@ -134,7 +134,7 @@ _cred_derive_key() {
     local salt="$2"
 
     # Use OpenSSL PBKDF2 with 100k iterations
-    echo -n "$password" | openssl enc -pbkdf2 -pass stdin -S "$salt" -iter 100000 -md sha256 -P 2>/dev/null | grep "key=" | cut -d= -f2
+    printf '%s' "$password" | openssl enc -aes-256-cbc -pbkdf2 -pass stdin -S "$salt" -iter 100000 -md sha256 -P 2>/dev/null | grep "key=" | cut -d= -f2
 }
 
 # _cred_prompt_password - Secure password prompt with retry logic
@@ -145,7 +145,7 @@ _cred_prompt_password() {
     local prompt="$2"
 
     echo -n "$prompt: " >&2
-    read -rs "$varname"
+    read -rs "${varname?}"
     echo >&2  # Newline after silent input
 
     # Export to caller's scope
@@ -181,7 +181,7 @@ _cred_encrypt_value() {
     local value="$1"
 
     # Encrypt with AES-256-CBC using PBKDF2
-    echo -n "$value" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt -base64 -pass "pass:${_CRED_MASTER_KEY}" 2>/dev/null
+    printf '%s' "$value" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt -base64 -A -pass "pass:${_CRED_MASTER_KEY}" 2>/dev/null
 }
 
 # _cred_decrypt_value - Decrypt a value
@@ -191,7 +191,7 @@ _cred_decrypt_value() {
     local encrypted="$1"
 
     # Decrypt with AES-256-CBC using PBKDF2
-    echo "$encrypted" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d -base64 -pass "pass:${_CRED_MASTER_KEY}" 2>/dev/null
+    printf '%s' "$encrypted" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d -base64 -A -pass "pass:${_CRED_MASTER_KEY}" 2>/dev/null
 }
 
 #===============================================================================
@@ -225,27 +225,35 @@ cred_open() {
     fi
 
     # Prompt for password if not provided
-    local attempt=0
-    while [[ $attempt -lt 3 ]]; do
-        if [[ -z "$password" ]]; then
-            _cred_prompt_password "password" "Enter master password"
+    if [[ -z "$password" ]]; then
+        if [[ ! -t 0 ]]; then
+            echo "[ERROR] Master password required" >&2
+            return 1
         fi
+        _cred_prompt_password "password" "Enter master password"
+    fi
 
-        # Derive key
-        _CRED_MASTER_KEY=$(_cred_derive_key "$password" "$_CRED_SALT")
+    # Derive key
+    _CRED_MASTER_KEY=$(_cred_derive_key "$password" "$_CRED_SALT")
+    if [[ -z "$_CRED_MASTER_KEY" ]]; then
+        echo "[ERROR] Failed to derive credential key" >&2
+        return 1
+    fi
 
-        # Verify by trying to read first credential
-        # For now, just check if we can derive key (actual validation happens on first decrypt)
-        _CRED_UNLOCKED=1
-        return 0
+    # Validate the password against the first stored credential when present.
+    local first_line first_encrypted
+    first_line=$(sed -n '/^---$/,$ p' "$CRED_FILE" | tail -n +2 | grep -v "^$" | head -n 1)
+    if [[ -n "$first_line" ]]; then
+        first_encrypted=${first_line#*:}
+        if ! _cred_decrypt_value "$first_encrypted" >/dev/null; then
+            echo "[ERROR] Authentication failed" >&2
+            _CRED_MASTER_KEY=""
+            return 1
+        fi
+    fi
 
-        # TODO: Add proper password verification
-        # attempt=$((attempt + 1))
-        # password=""  # Clear for retry
-    done
-
-    echo "[ERROR] Authentication failed after 3 attempts" >&2
-    exit 1
+    _CRED_UNLOCKED=1
+    return 0
 }
 
 # cred_set - Store a credential
@@ -254,10 +262,10 @@ cred_open() {
 # Auto-creates credentials file on first use
 # Returns: 0 on success, 1 on failure
 cred_set() {
-    local key="$1"
-    local value="$2"
+    local key="${1:-}"
+    local value="${2-}"
 
-    if [[ -z "$key" || -z "$value" ]]; then
+    if [[ $# -lt 2 || -z "$key" ]]; then
         echo "[ERROR] Usage: cred_set <key> <value>" >&2
         return 1
     fi
@@ -304,7 +312,7 @@ cred_set() {
 # Usage: cred_get "service/env/name"
 # Returns: Decrypted value via stdout, or 1 if not found
 cred_get() {
-    local key="$1"
+    local key="${1:-}"
 
     if [[ -z "$key" ]]; then
         echo "[ERROR] Usage: cred_get <key>" >&2
@@ -356,7 +364,7 @@ cred_list() {
 # Usage: cred_delete "service/env/name"
 # Returns: 0 on success
 cred_delete() {
-    local key="$1"
+    local key="${1:-}"
 
     if [[ -z "$key" ]]; then
         echo "[ERROR] Usage: cred_delete <key>" >&2

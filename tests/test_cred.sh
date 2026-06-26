@@ -354,7 +354,8 @@ test_export() {
 }
 
 test_security_injection() {
-	init_test_cred
+	create_test_cred_file
+	cred_open &>/dev/null
 
 	run_test "injection: command substitution escaped" "
         cred_set 'oracle/test/malicious' '\$(rm -rf /tmp/test)' 2>/dev/null

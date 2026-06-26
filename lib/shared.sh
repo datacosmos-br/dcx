@@ -11,7 +11,7 @@
 declare -r _DCX_SHARED_LOADED=1
 
 # Load constants (provides dc_detect_platform, DCX_GITHUB_REPO, etc.)
-# shellcheck source=constants.sh
+# shellcheck source=lib/constants.sh
 source "${BASH_SOURCE[0]%/*}/constants.sh"
 
 #===============================================================================

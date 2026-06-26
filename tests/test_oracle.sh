@@ -215,10 +215,9 @@ touch "${MOCK_BACKUP_ROOT}/autobackup/c-1111111111-20260113-00"
 run_test "backup_discover finds direct autobackup" bash -c '
     source "'"${SCRIPT_DIR}"'/../lib/oracle.sh"
     source "'"${SCRIPT_DIR}"'/../lib/oracle_rman.sh"
-    BKPFULL=""
     AUTO=""
     oracle_rman_backup_discover "'"${MOCK_BACKUP_ROOT}"'"
-    [[ -n "${BKPFULL}" && -n "${AUTO}" ]]
+    [[ -n "${AUTO}" ]]
 '
 
 rm -rf "${MOCK_BACKUP_ROOT}"
@@ -231,11 +230,10 @@ touch "${MOCK_BACKUP_ROOT2}/RMAN_LOCAL_FULL/PRODDB/autobackup/c-2222222222-20260
 run_test "backup_discover finds RMAN_LOCAL_FULL structure" bash -c '
     source "'"${SCRIPT_DIR}"'/../lib/oracle.sh"
     source "'"${SCRIPT_DIR}"'/../lib/oracle_rman.sh"
-    BKPFULL=""
     AUTO=""
     DBID=""
     oracle_rman_backup_discover "'"${MOCK_BACKUP_ROOT2}"'"
-    [[ -n "${BKPFULL}" && "${DBID}" == "2222222222" ]]
+    [[ -n "${AUTO}" && "${DBID}" == "2222222222" ]]
 '
 
 rm -rf "${MOCK_BACKUP_ROOT2}"

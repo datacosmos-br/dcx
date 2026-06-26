@@ -142,7 +142,6 @@ oracle_rman_backup_discover() {
 
     # Initialize discovery variables
     AUTO=""           # Autobackup controlfile directory
-    BKPFULL="${root}" # Root for catalog - catalog EVERYTHING here
     DBID=""           # Database ID
 
     # Find controlfile/spfile autobackup files (c-DBID-*) anywhere
@@ -156,22 +155,19 @@ oracle_rman_backup_discover() {
     [[ -n "${AUTO}" ]] || die "Nenhum arquivo de controlfile autobackup (c-*) encontrado em ${root}"
 
     # Export discovery results - backup type will be detected AFTER cataloging
-    # by querying the controlfile/RMAN catalog
-    export BKPFULL AUTO DBID
+    export AUTO DBID
     export BACKUP_TYPE=""  # Will be set by oracle_rman_detect_catalog_contents()
 
     log "[DISCOVER] Results:"
     log "  AUTO: ${AUTO}"
-    log "  BKPFULL: ${BKPFULL}"
     log "  DBID: ${DBID:-nao detectado}"
     log_success "[OK] Controlfile autobackup found"
-    log "[INFO] Backup type will be detected after cataloging from controlfile"
 
     # Track results
-    report_track_item "ok" "Backup Discovery" "Auto: ${AUTO}, Root: ${BKPFULL}"
+    report_track_item "ok" "Backup Discovery" "Auto: ${AUTO}"
     report_track_meta "rman_dbid" "${DBID:-unknown}"
     report_track_meta "rman_autobackup_path" "${AUTO}"
-    report_track_step_done 0 "Backups discovered: DBID=${DBID}, will catalog from ${BKPFULL}"
+    report_track_step_done 0 "Backups discovered: DBID=${DBID}"
 }
 
 #-------------------------------------------------------------------------------

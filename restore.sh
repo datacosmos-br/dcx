@@ -147,7 +147,7 @@ RENAME_SQL="${LOGDIR}/08_rename_files.sql"
 
 # Globals set by oracle functions
 CONTROL_DIR="" DATA_DIR="" FRA_DIR="" ADMIN_DIR=""
-BKPFULL="" BKPARCH="" AUTO="" ORIG_DB_NAME=""
+AUTO="" ORIG_DB_NAME=""
 SGA="" PGA=""
 
 #===============================================================================
@@ -240,7 +240,7 @@ EOF
 
 write_rman_catalog() {
     # Note: No DBID - database is MOUNTED, RMAN reads DBID from controlfile
-    # Catalog EVERYTHING from BKPFULL - RMAN will automatically identify:
+    # Catalog EVERYTHING from BACKUP_ROOT - RMAN will automatically identify:
     # - Backup sets (backup pieces)
     # - Datafile copies
     # - Archivelog backups
@@ -255,7 +255,7 @@ list incarnation;"
     oracle_rman_write_cmdfile_run "${RMAN_CAT}" "" "${post}" <<EOF
   # Catalog all backup files from root directory
   # RMAN will automatically identify backup sets, datafile copies, and archivelogs
-  catalog start with '${BKPFULL}/' noprompt;
+  catalog start with '${BACKUP_ROOT}/' noprompt;
 EOF
     log_debug "RMAN cmdfile ready: ${RMAN_CAT}"
 }
@@ -295,30 +295,13 @@ write_rman_restore() {
         log_info "PITR: Restore UNTIL SCN ${UNTIL_SCN}"
     fi
 
-    # Generate restore commands based on backup type
+    # Generate restore commands - always use SET NEWNAME + RESTORE + SWITCH
+    # RMAN will automatically choose best source (image copy or backupset)
     local restore_cmds=""
-    case "${BACKUP_TYPE:-backupset}" in
-        imagecopy)
-            # Image copy restore: use SWITCH to point to copies (faster, no data movement)
-            log_info "Using IMAGE COPY restore (switch to copy)"
-            restore_cmds="  -- Image copy restore: switch datafiles to cataloged copies"$'\n'
-            restore_cmds+="  switch database to copy;"
-            ;;
-        both)
-            # Both types available: prefer image copy for speed, but include fallback
-            log_info "Both backup types available, using IMAGE COPY (faster)"
-            restore_cmds="  -- Both backup types available - using image copy (faster)"$'\n'
-            restore_cmds+="  -- To use backup sets instead: RESTORE DATABASE;"$'\n'
-            restore_cmds+="  switch database to copy;"
-            ;;
-        backupset|*)
-            # Backup set restore: traditional restore + switch
-            log_info "Using BACKUP SET restore (extract from backups)"
-            restore_cmds="$(oracle_rman_build_newname_lines)"$'\n'
-            restore_cmds+="  restore database;"$'\n'
-            restore_cmds+="  switch datafile all;"
-            ;;
-    esac
+    log_info "Using BACKUP_TYPE=${BACKUP_TYPE:-backupset} - RMAN selects best source"
+    restore_cmds="$(oracle_rman_build_newname_lines)"$'\n'
+    restore_cmds+="  restore database;"$'\n'
+    restore_cmds+="  switch datafile all;"
 
     oracle_rman_write_cmdfile_run "${RMAN_RES}" "" "" <<EOF
 ${until_clause}
@@ -394,8 +377,7 @@ phase_validate_and_discover() {
     # Step 2: Backup discovery
     report_step "Discovering backup"
     oracle_rman_backup_discover "${BACKUP_ROOT}" || die "Backup nao encontrado: ${BACKUP_ROOT}"
-    rt_assert_dir_exists "BKPFULL" "${BKPFULL}"
-    report_item ok "Backup" "Found: ${BKPFULL}"
+    report_item ok "Backup" "Found: ${BACKUP_ROOT}"
 
     if [[ -z "${DBID:-}" ]]; then
         DBID="$(oracle_rman_detect_dbid "${AUTO}")" || die "DBID nao detectado"
@@ -403,6 +385,9 @@ phase_validate_and_discover() {
     report_item ok "DBID" "${DBID}"
     report_meta "DBID" "${DBID}"
     report_step_done 0
+
+    # Salvar DBID no estado para --resume-from
+    _rman_state_set "DBID" "${DBID}"
 
     runtime_write_host_report "${LOGDIR}/host.txt" "oracle_config_host_report_callback"
 
@@ -414,8 +399,6 @@ phase_validate_and_discover() {
         "DEST_TYPE=${DEST_TYPE}" \
         "DEST_BASE=${DEST_BASE}" \
         "BACKUP_ROOT=${BACKUP_ROOT}" \
-        "BKPFULL=${BKPFULL}" \
-        "BKPARCH=${BKPARCH:-N/A}" \
         "RMAN_CHANNELS=${RMAN_CHANNELS}"
 
     report_confirm "Variaveis corretas?" "YES" || die "Configuracao rejeitada"
@@ -584,7 +567,7 @@ phase_catalog_and_preview() {
     cat_total="${cat_files}"
     if [[ "${cat_total}" -eq 0 ]]; then
         warn "No files were cataloged"
-        warn "Check backup path: ${BKPFULL}"
+        warn "Check backup path: ${BACKUP_ROOT}"
         warn "This may indicate backups already cataloged or path issues"
     else
         report_item ok "Cataloged" "${cat_total} files"
@@ -656,20 +639,26 @@ phase_validate_and_restore() {
         report_step_done 0
     fi
 
-    # Step: Preview (skip if already completed in previous run)
-    report_step "Running restore preview"
-    oracle_rman_exec_with_state "PREVIEW" "${RMAN_PRE}" "${LOGDIR}/03_preview.log" "Restore Preview"
-    report_item ok "Preview" "Completed"
-    report_step_done 0
+    # DRY_RUN controla O QUE EXECUTA:
+    #   2 = Para antes de restaurar controlfile (já parou em Phase A)
+    #   1 = Executa até validate, NÃO executa restore
+    #   0 = Pula validate, executa restore direto
+    #
+    # --resume-from controla DE ONDE COMEÇA (independente do DRY_RUN)
 
-    # Step: Validate (skip if already completed in previous run)
-    report_step "Running restore validate"
-    oracle_rman_exec_with_state "VALIDATE" "${RMAN_VAL}" "${LOGDIR}/04_validate.log" "Restore Validate"
-    report_item ok "Validate" "Completed"
-    report_step_done 0
-
-    # DRY_RUN=1 EXIT POINT: Stop after validation
     if [[ "${DRY_RUN}" == "1" ]]; then
+        # DRY_RUN=1: Executa preview + validate e para
+        report_step "Running restore preview"
+        oracle_rman_exec_with_state "PREVIEW" "${RMAN_PRE}" "${LOGDIR}/03_preview.log" "Restore Preview"
+        report_item ok "Preview" "Completed"
+        report_step_done 0
+
+        report_step "Running restore validate"
+        oracle_rman_exec_with_state "VALIDATE" "${RMAN_VAL}" "${LOGDIR}/04_validate.log" "Restore Validate"
+        report_item ok "Validate" "Completed"
+        report_step_done 0
+
+        # EXIT POINT: DRY_RUN=1 para aqui
         report_metric "status" "DRY_RUN_1_VALIDATED"
         report_finalize
 
@@ -681,13 +670,15 @@ phase_validate_and_restore() {
         echo "  State saved to: $(_rman_state_file)"
         echo "  Restore Preview:  ${LOGDIR}/03_preview.log"
         echo "  Restore Validate: ${LOGDIR}/04_validate.log"
-        echo "  Command files:    ${LOGDIR}/"
         echo ""
-        echo "  TO EXECUTE THE ACTUAL RESTORE (skips preview/validate):"
-        echo "    DRY_RUN=0 ./restore.sh"
+        echo "  TO EXECUTE RESTORE:"
+        echo "    DRY_RUN=0 ./restore.sh --resume-from=restore"
         echo "================================================================"
         exit 0
     fi
+
+    # DRY_RUN=0: Pula validate, vai direto para restore
+    log_info "[SKIP] Preview/Validate: DRY_RUN=0 pula validação e executa restore"
 
     # Step: Space check
     report_step "Checking available space"
@@ -990,15 +981,12 @@ main() {
             exit 0
         fi
     else
-        # Minimal validation for skip mode
+        # Minimal setup for skip mode - banco já está montado com controlfile restaurado
         log_info "SKIP_TO=${skip_to}: Skipping Phase A (Validation & Discovery)"
         validate_all
         oracle_config_resolve_paths "${DEST_TYPE}" "${DEST_BASE}" "${TARGET_DB_UNIQUE_NAME}" "${DATA_DG}" "${FRA_DG}"
         oracle_rman_auto_channels
-
-        # Backup discovery - required to set BKPFULL for catalog command
-        oracle_rman_backup_discover "${BACKUP_ROOT}" || die "Backup nao encontrado: ${BACKUP_ROOT}"
-        log_info "SKIP_TO=${skip_to}: BKPFULL=${BKPFULL}"
+        # Não precisa discovery - catalog já foi feito e está no controlfile
     fi
 
     # Phase B: Bootstrap & Metadata (spfile, controlfile, pfile, mount)

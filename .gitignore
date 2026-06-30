@@ -26,5 +26,3 @@ sync.sh
 
 # Claude local files
 .claude/
-# --- ai-hub workspace local environment cache ---
-.direnv/

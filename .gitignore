@@ -79,3 +79,5 @@ CODEX.md
 AIDER.md
 CLAUDE.md
 *.local.md
+# --- ai-hub workspace local environment cache ---
+.direnv/

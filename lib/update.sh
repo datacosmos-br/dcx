@@ -6,15 +6,15 @@
 #===============================================================================
 
 # Prevent multiple sourcing
-[[ -n "${_DC_UPDATE_LOADED:-}" ]] && return 0
-declare -r _DC_UPDATE_LOADED=1
+[[ -n "${_DCX_UPDATE_LOADED:-}" ]] && return 0
+declare -r _DCX_UPDATE_LOADED=1
 
 # Load core (provides dc_detect_platform via Go), constants, and shared functions
-# shellcheck source=core.sh
+# shellcheck source=lib/core.sh
 source "${BASH_SOURCE[0]%/*}/core.sh"
-# shellcheck source=constants.sh
+# shellcheck source=lib/constants.sh
 source "${BASH_SOURCE[0]%/*}/constants.sh"
-# shellcheck source=shared.sh
+# shellcheck source=lib/shared.sh
 source "${BASH_SOURCE[0]%/*}/shared.sh"
 
 #===============================================================================
@@ -115,7 +115,8 @@ _dc_perform_update() {
 
     # Backup current installation
     if [[ -d "$dc_home" ]]; then
-        local backup_dir="${dc_home}.backup.$(date +%Y%m%d%H%M%S)"
+        local backup_dir
+        backup_dir="${dc_home}.backup.$(date +%Y%m%d%H%M%S)"
         echo "Backing up to: $backup_dir"
         cp -r "$dc_home" "$backup_dir"
     fi

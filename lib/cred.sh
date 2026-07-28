@@ -1,0 +1,565 @@
+#!/usr/bin/env bash
+#===============================================================================
+# dcx/lib/cred.sh - Encrypted Credential Storage
+#===============================================================================
+# Secure credential management using AES-256-GCM encryption
+# - Master password unlocks all credentials
+# - Recovery key for password reset
+# - Key format: service/environment/name (e.g., oracle/prod/password)
+#===============================================================================
+
+# Prevent double sourcing
+[[ -n "${_DCX_CRED_LOADED:-}" ]] && return 0
+declare -r _DCX_CRED_LOADED=1
+
+#===============================================================================
+# CONFIGURATION
+#===============================================================================
+
+# Credentials file location (can be overridden)
+CRED_FILE="${DCX_HOME:-$HOME/.local/share/dcx}/etc/credentials.enc"
+CRED_VERSION="1.0"
+
+# Internal state
+_CRED_UNLOCKED=0
+_CRED_MASTER_KEY=""
+_CRED_SALT=""
+
+#===============================================================================
+# INTERNAL FUNCTIONS
+#===============================================================================
+
+# _cred_init_internal - Initialize credentials file on first use
+# Called automatically by cred_set when credentials.enc doesn't exist
+# Returns: 0 on success, 1 on failure
+_cred_init_internal() {
+    local cred_dir
+    cred_dir="$(dirname "$CRED_FILE")"
+
+    # Create directory if needed
+    mkdir -p "$cred_dir"
+
+    echo ""
+    echo "==================================================================="
+    echo "  CREDENTIAL STORAGE INITIALIZATION"
+    echo "==================================================================="
+    echo ""
+
+    # Prompt for master password (twice for confirmation)
+    local password password2
+    _cred_prompt_password "password" "Create master password"
+    _cred_prompt_password "password2" "Confirm master password"
+
+    if [[ "$password" != "$password2" ]]; then
+        echo "[ERROR] Passwords do not match" >&2
+        return 1
+    fi
+
+    if [[ ${#password} -lt 8 ]]; then
+        echo "[ERROR] Password must be at least 8 characters" >&2
+        return 1
+    fi
+
+    # Generate random salt (16 bytes)
+    local salt
+    salt=$(openssl rand -hex 16)
+
+    # Generate recovery key (32 bytes base64)
+    local recovery_key
+    recovery_key=$(openssl rand -base64 32)
+
+    # Hash recovery key for storage
+    local recovery_hash
+    recovery_hash=$(printf '%s' "$recovery_key" | openssl dgst -sha256 -binary | openssl base64)
+
+    # Display recovery key (ONCE)
+    echo ""
+    echo "╔═════════════════════════════════════════════════════════════════╗"
+    echo "║                        RECOVERY KEY                             ║"
+    echo "╠═════════════════════════════════════════════════════════════════╣"
+    echo "║                                                                 ║"
+    echo "║  $recovery_key  ║"
+    echo "║                                                                 ║"
+    echo "║  SAVE THIS KEY SECURELY - IT CANNOT BE RECOVERED               ║"
+    echo "║  Use it to reset your master password if forgotten             ║"
+    echo "║                                                                 ║"
+    echo "╚═════════════════════════════════════════════════════════════════╝"
+    echo ""
+
+    # Wait for user confirmation
+    local confirmation
+    while true; do
+        echo -n "Type 'saved' to confirm you have saved the recovery key: "
+        read -r confirmation
+        if [[ "$confirmation" == "saved" ]]; then
+            break
+        fi
+        echo "Please type 'saved' to continue..."
+    done
+
+    # Derive key from password
+    _CRED_MASTER_KEY=$(_cred_derive_key "$password" "$salt")
+    _CRED_SALT="$salt"
+
+    # Create metadata header
+    local created
+    created=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    local header
+    header="VERSION:$CRED_VERSION
+CREATED:$created
+SALT:$salt
+RECOVERY_HASH:$recovery_hash
+RECOVERY_SHOWN:1
+---"
+
+    # Write header to file
+    echo "$header" > "$CRED_FILE"
+    chmod 600 "$CRED_FILE"
+
+    _CRED_UNLOCKED=1
+
+    echo ""
+    echo "[INFO] Credential storage initialized: $CRED_FILE"
+    echo ""
+
+    return 0
+}
+
+# _cred_derive_key - Derive encryption key from password using PBKDF2
+# Usage: _cred_derive_key "password" "salt"
+# Returns: Base64 encoded key (32 bytes)
+_cred_derive_key() {
+    local password="$1"
+    local salt="$2"
+
+    # Use OpenSSL PBKDF2 with 100k iterations
+    printf '%s' "$password" | openssl enc -aes-256-cbc -pbkdf2 -pass stdin -S "$salt" -iter 100000 -md sha256 -P 2>/dev/null | grep "key=" | cut -d= -f2
+}
+
+# _cred_prompt_password - Secure password prompt with retry logic
+# Usage: _cred_prompt_password "varname" "prompt"
+# Sets variable with name $varname
+_cred_prompt_password() {
+    local varname="$1"
+    local prompt="$2"
+
+    echo -n "$prompt: " >&2
+    read -rs "${varname?}"
+    echo >&2  # Newline after silent input
+
+    # Export to caller's scope
+    printf -v "$varname" '%s' "${!varname}"
+}
+
+# _cred_read_header - Read and parse metadata header
+# Returns: 0 on success, sets _CRED_SALT
+_cred_read_header() {
+    if [[ ! -f "$CRED_FILE" ]]; then
+        return 1
+    fi
+
+    # Read header (lines before ---)
+    local header
+    header=$(sed -n '1,/^---$/p' "$CRED_FILE" | grep -v "^---$")
+
+    # Extract salt
+    _CRED_SALT=$(echo "$header" | grep "^SALT:" | cut -d: -f2)
+
+    if [[ -z "$_CRED_SALT" ]]; then
+        echo "[ERROR] Corrupted credentials file: missing salt" >&2
+        return 1
+    fi
+
+    return 0
+}
+
+# _cred_encrypt_value - Encrypt a value with AES-256-CBC
+# Usage: _cred_encrypt_value "value"
+# Returns: base64 encoded encrypted value
+_cred_encrypt_value() {
+    local value="$1"
+
+    # Encrypt with AES-256-CBC using PBKDF2
+    printf '%s' "$value" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt -base64 -A -pass "pass:${_CRED_MASTER_KEY}" 2>/dev/null
+}
+
+# _cred_decrypt_value - Decrypt a value
+# Usage: _cred_decrypt_value "encrypted_base64"
+# Returns: Decrypted value
+_cred_decrypt_value() {
+    local encrypted="$1"
+
+    # Decrypt with AES-256-CBC using PBKDF2
+    printf '%s' "$encrypted" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d -base64 -A -pass "pass:${_CRED_MASTER_KEY}" 2>/dev/null
+}
+
+#===============================================================================
+# PUBLIC FUNCTIONS
+#===============================================================================
+
+# cred_open - Unlock credentials with master password
+# Usage: cred_open [password]
+# If password not provided, prompts user
+# Returns: 0 on success, 1 on failure
+cred_open() {
+    local password="${1:-}"
+
+    if [[ $_CRED_UNLOCKED -eq 1 ]]; then
+        return 0  # Already unlocked
+    fi
+
+    if [[ ! -f "$CRED_FILE" ]]; then
+        echo "[ERROR] Credentials file not found: $CRED_FILE" >&2
+        return 1
+    fi
+
+    # Read header to get salt
+    if ! _cred_read_header; then
+        return 1
+    fi
+
+    # Check for env var override (for CI/automation)
+    if [[ -n "${DCX_KEYRING_PASSWORD:-}" ]]; then
+        password="$DCX_KEYRING_PASSWORD"
+    fi
+
+    # Prompt for password if not provided
+    if [[ -z "$password" ]]; then
+        if [[ ! -t 0 ]]; then
+            echo "[ERROR] Master password required" >&2
+            return 1
+        fi
+        _cred_prompt_password "password" "Enter master password"
+    fi
+
+    # Derive key
+    _CRED_MASTER_KEY=$(_cred_derive_key "$password" "$_CRED_SALT")
+    if [[ -z "$_CRED_MASTER_KEY" ]]; then
+        echo "[ERROR] Failed to derive credential key" >&2
+        return 1
+    fi
+
+    # Validate the password against the first stored credential when present.
+    local first_line first_encrypted
+    first_line=$(sed -n '/^---$/,$ p' "$CRED_FILE" | tail -n +2 | grep -v "^$" | head -n 1)
+    if [[ -n "$first_line" ]]; then
+        first_encrypted=${first_line#*:}
+        if ! _cred_decrypt_value "$first_encrypted" >/dev/null; then
+            echo "[ERROR] Authentication failed" >&2
+            _CRED_MASTER_KEY=""
+            return 1
+        fi
+    fi
+
+    _CRED_UNLOCKED=1
+    return 0
+}
+
+# cred_set - Store a credential
+# Usage: cred_set "service/env/name" "value"
+# Key format: service/environment/name (e.g., oracle/prod/password)
+# Auto-creates credentials file on first use
+# Returns: 0 on success, 1 on failure
+cred_set() {
+    local key="${1:-}"
+    local value="${2-}"
+
+    if [[ $# -lt 2 || -z "$key" ]]; then
+        echo "[ERROR] Usage: cred_set <key> <value>" >&2
+        return 1
+    fi
+
+    # Validate key format (service/env/name)
+    if [[ ! "$key" =~ ^[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$ ]]; then
+        echo "[ERROR] Invalid key format. Use: service/environment/name" >&2
+        return 1
+    fi
+
+    # Auto-create on first use
+    if [[ ! -f "$CRED_FILE" ]]; then
+        if ! _cred_init_internal; then
+            return 1
+        fi
+    fi
+
+    # Unlock if needed
+    if [[ $_CRED_UNLOCKED -ne 1 ]]; then
+        if ! cred_open; then
+            return 1
+        fi
+    fi
+
+    # Encrypt value
+    local encrypted
+    encrypted=$(_cred_encrypt_value "$value")
+
+    # Remove existing key if present and append new one
+    if grep -q "^${key}:" "$CRED_FILE" 2>/dev/null; then
+        # Create temp file without the old entry
+        grep -v "^${key}:" "$CRED_FILE" > "${CRED_FILE}.tmp"
+        mv "${CRED_FILE}.tmp" "$CRED_FILE"
+    fi
+
+    # Append new credential
+    echo "${key}:${encrypted}" >> "$CRED_FILE"
+
+    echo "[INFO] Credential stored: $key"
+    return 0
+}
+
+# cred_get - Retrieve a credential
+# Usage: cred_get "service/env/name"
+# Returns: Decrypted value via stdout, or 1 if not found
+cred_get() {
+    local key="${1:-}"
+
+    if [[ -z "$key" ]]; then
+        echo "[ERROR] Usage: cred_get <key>" >&2
+        return 1
+    fi
+
+    # Unlock if needed
+    if [[ $_CRED_UNLOCKED -ne 1 ]]; then
+        if ! cred_open; then
+            return 1
+        fi
+    fi
+
+    # Find credential
+    local line
+    line=$(grep "^${key}:" "$CRED_FILE" 2>/dev/null)
+
+    if [[ -z "$line" ]]; then
+        echo "[ERROR] Credential not found: $key" >&2
+        return 1
+    fi
+
+    # Extract encrypted value (everything after first colon)
+    local encrypted
+    encrypted=$(echo "$line" | cut -d: -f2-)
+
+    # Decrypt and output
+    _cred_decrypt_value "$encrypted"
+}
+
+# cred_list - List all credential keys
+# Usage: cred_list
+# Returns: One key per line
+cred_list() {
+    if [[ ! -f "$CRED_FILE" ]]; then
+        echo "[ERROR] Credentials file not found: $CRED_FILE" >&2
+        return 1
+    fi
+
+    # Skip header (before ---) and blank lines
+    sed -n '/^---$/,$ p' "$CRED_FILE" | \
+        tail -n +2 | \
+        grep -v "^$" | \
+        cut -d: -f1 | \
+        sort
+}
+
+# cred_delete - Remove a credential
+# Usage: cred_delete "service/env/name"
+# Returns: 0 on success
+cred_delete() {
+    local key="${1:-}"
+
+    if [[ -z "$key" ]]; then
+        echo "[ERROR] Usage: cred_delete <key>" >&2
+        return 1
+    fi
+
+    if [[ ! -f "$CRED_FILE" ]]; then
+        echo "[ERROR] Credentials file not found: $CRED_FILE" >&2
+        return 1
+    fi
+
+    # Check if key exists
+    if ! grep -q "^${key}:" "$CRED_FILE" 2>/dev/null; then
+        echo "[ERROR] Credential not found: $key" >&2
+        return 1
+    fi
+
+    # Remove the line (using grep -v for portability)
+    grep -v "^${key}:" "$CRED_FILE" > "${CRED_FILE}.tmp"
+    mv "${CRED_FILE}.tmp" "$CRED_FILE"
+
+    echo "[INFO] Credential deleted: $key"
+    return 0
+}
+
+# cred_migrate - Migrate plain-text credentials to secure storage
+# Usage: cred_migrate
+# Scans for known plain-text credential patterns and offers to migrate them
+# Returns: 0 on success
+cred_migrate() {
+    echo ""
+    echo "==================================================================="
+    echo "  CREDENTIAL MIGRATION"
+    echo "==================================================================="
+    echo ""
+    echo "Scanning for plain-text credentials..."
+    echo ""
+
+    local found=0
+    local migrated=0
+
+    # Check environment variables
+    local env_patterns=(
+        "DB_ADMIN_PASSWORD"
+        "SOURCE_DB_PASSWORD"
+        "NETWORK_LINK_PASSWORD"
+        "DB_PASSWORD"
+        "ORACLE_PASSWORD"
+    )
+
+    for env_var in "${env_patterns[@]}"; do
+        if [[ -n "${!env_var:-}" ]]; then
+            found=$((found + 1))
+            echo "Found: $env_var in environment"
+
+            # Suggest migration key based on variable name
+            local suggested_key
+            case "$env_var" in
+                DB_ADMIN_PASSWORD)
+                    suggested_key="oracle/default/admin_password"
+                    ;;
+                SOURCE_DB_PASSWORD)
+                    suggested_key="oracle/source/db_password"
+                    ;;
+                NETWORK_LINK_PASSWORD)
+                    suggested_key="oracle/default/network_link_password"
+                    ;;
+                *)
+                    suggested_key="oracle/default/${env_var,,}"
+                    ;;
+            esac
+
+            echo -n "  Migrate to '$suggested_key'? [Y/n] "
+            local response
+            read -r response
+            response="${response,,}"
+
+            if [[ -z "$response" || "$response" == "y" || "$response" == "yes" ]]; then
+                if cred_set "$suggested_key" "${!env_var}"; then
+                    migrated=$((migrated + 1))
+                    echo "  ✓ Migrated to secure storage"
+                else
+                    echo "  ✗ Migration failed" >&2
+                fi
+            else
+                echo "  Skipped"
+            fi
+            echo ""
+        fi
+    done
+
+    # Check for old Oracle keyring file (dcx-oracle's previous format)
+    if [[ -f "$HOME/.oracle_keyring.enc" ]]; then
+        found=$((found + 1))
+        echo "Found: ~/.oracle_keyring.enc (legacy format)"
+        echo "  Note: This file uses an incompatible encryption format"
+        echo "  You'll need to re-enter credentials manually"
+        echo ""
+    fi
+
+    # Check YAML config files for password fields
+    if [[ -d "${DCX_CONFIG_DIR:-$HOME/.config/dcx}" ]]; then
+        local config_files
+        config_files=$(find "${DCX_CONFIG_DIR:-$HOME/.config/dcx}" -name "*.yaml" 2>/dev/null)
+
+        if [[ -n "$config_files" ]]; then
+            while IFS= read -r config_file; do
+                if grep -q "password:" "$config_file" 2>/dev/null; then
+                    found=$((found + 1))
+                    echo "Found: Password fields in $config_file"
+                    echo "  Note: Manual migration required for YAML files"
+                    echo "  Use: cred_set <key> <password> then remove from YAML"
+                    echo ""
+                fi
+            done <<< "$config_files"
+        fi
+    fi
+
+    # Summary
+    echo "==================================================================="
+    echo "Migration complete:"
+    echo "  - Found: $found plain-text credential(s)"
+    echo "  - Migrated: $migrated to secure storage"
+    echo ""
+
+    if [[ $migrated -gt 0 ]]; then
+        echo "IMPORTANT: You can now unset these environment variables:"
+        echo ""
+        for env_var in "${env_patterns[@]}"; do
+            if [[ -n "${!env_var:-}" ]]; then
+                echo "  unset $env_var"
+            fi
+        done
+        echo ""
+        echo "Add these to your ~/.bashrc or ~/.profile to make permanent."
+    fi
+
+    echo "==================================================================="
+    echo ""
+
+    return 0
+}
+
+# cred_export - Export credentials as shell environment variables
+# Usage: cred_export [prefix]
+# Outputs: export statements for credentials matching prefix
+# Key transformation: oracle/prod/password → ORACLE_PROD_PASSWORD
+# Example: eval "$(cred_export oracle/prod)"
+cred_export() {
+    local prefix="${1:-}"
+
+    # Unlock if needed
+    if [[ $_CRED_UNLOCKED -ne 1 ]]; then
+        if ! cred_open; then
+            return 1
+        fi
+    fi
+
+    if [[ ! -f "$CRED_FILE" ]]; then
+        echo "[ERROR] Credentials file not found: $CRED_FILE" >&2
+        return 1
+    fi
+
+    # Get list of keys
+    local keys
+    if [[ -n "$prefix" ]]; then
+        keys=$(cred_list | grep "^${prefix}")
+    else
+        keys=$(cred_list)
+    fi
+
+    if [[ -z "$keys" ]]; then
+        echo "[ERROR] No credentials found matching: ${prefix:-*}" >&2
+        return 1
+    fi
+
+    # Export each credential
+    while IFS= read -r key; do
+        # Transform key: oracle/prod/password → ORACLE_PROD_PASSWORD
+        local env_var
+        env_var=$(echo "$key" | tr '/' '_' | tr '[:lower:]' '[:upper:]')
+
+        # Get value
+        local value
+        value=$(cred_get "$key" 2>/dev/null)
+
+        if [[ -n "$value" ]]; then
+            # Output export statement (shell-escaped)
+            printf 'export %s=%q\n' "$env_var" "$value"
+        fi
+    done <<< "$keys"
+
+    return 0
+}
+
+#===============================================================================
+# END: cred.sh
+#===============================================================================

@@ -14,6 +14,37 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type PlatformString struct {
+	Default string
+	Values  map[string]string
+}
+
+func (ps *PlatformString) UnmarshalYAML(value *yaml.Node) error {
+	switch value.Kind {
+	case yaml.ScalarNode:
+		ps.Default = value.Value
+		return nil
+	case yaml.MappingNode:
+		values := make(map[string]string)
+		if err := value.Decode(&values); err != nil {
+			return err
+		}
+		ps.Values = values
+		return nil
+	default:
+		return fmt.Errorf("expected string or platform map, got YAML kind %d", value.Kind)
+	}
+}
+
+func (ps PlatformString) ForPlatform(platform string) string {
+	if ps.Values != nil {
+		if value, ok := ps.Values[platform]; ok {
+			return value
+		}
+	}
+	return ps.Default
+}
+
 // ToolConfig represents a single tool configuration
 type ToolConfig struct {
 	Version       string            `yaml:"version"`
@@ -21,7 +52,7 @@ type ToolConfig struct {
 	Description   string            `yaml:"description"`
 	URLs          map[string]string `yaml:"urls"`
 	Binary        string            `yaml:"binary"`
-	ArchiveBinary string            `yaml:"archive_binary"` // Name of binary inside archive (if different from Binary)
+	ArchiveBinary PlatformString    `yaml:"archive_binary"` // Name inside archive, optionally platform-specific.
 	Extract       string            `yaml:"extract"`
 }
 
@@ -219,8 +250,8 @@ func toolsInstall(name string, force bool) error {
 	// Extract - use ArchiveBinary if defined (for tools with different names in archive)
 	fmt.Println("  Extracting...")
 	binaryToFind := name
-	if tool.ArchiveBinary != "" {
-		binaryToFind = tool.ArchiveBinary
+	if archiveBinary := tool.ArchiveBinary.ForPlatform(platform); archiveBinary != "" {
+		binaryToFind = archiveBinary
 	}
 	if ext == ".zip" {
 		if err := extractFromZip(archivePath, binaryToFind, destPath); err != nil {

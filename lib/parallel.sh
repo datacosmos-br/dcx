@@ -8,8 +8,8 @@
 #===============================================================================
 
 # Prevent multiple sourcing
-[[ -n "${_DC_PARALLEL_LOADED:-}" ]] && return 0
-declare -r _DC_PARALLEL_LOADED=1
+[[ -n "${_DCX_PARALLEL_LOADED:-}" ]] && return 0
+declare -r _DCX_PARALLEL_LOADED=1
 
 # Default max concurrent jobs
 declare -g DCX_PARALLEL_MAX_JOBS="${DCX_PARALLEL_MAX_JOBS:-4}"

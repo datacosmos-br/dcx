@@ -129,7 +129,7 @@ func configShow() {
 	fmt.Printf("  repo: %s\n", config.Project.Repo)
 	fmt.Println()
 	fmt.Println("Paths:")
-	fmt.Printf("  DC_HOME: %s\n", getDCHome())
+	fmt.Printf("  DCX_HOME: %s\n", getDCHome())
 	fmt.Printf("  bin: %s\n", getBinDir())
 	fmt.Printf("  etc: %s\n", getEtcDir())
 	fmt.Printf("  cache: %s\n", getCacheDir())
@@ -149,7 +149,7 @@ func configGet(key string) {
 		fmt.Println(config.Project.FullName)
 	case "repo", "project.repo":
 		fmt.Println(config.Project.Repo)
-	case "home", "DC_HOME":
+	case "home", "DCX_HOME":
 		fmt.Println(getDCHome())
 	case "bin", "bin_dir":
 		fmt.Println(getBinDir())
@@ -166,11 +166,11 @@ func configGet(key string) {
 }
 
 func configPaths() {
-	fmt.Printf("DC_HOME=%s\n", getDCHome())
-	fmt.Printf("DC_BIN_DIR=%s\n", getBinDir())
-	fmt.Printf("DC_ETC_DIR=%s\n", getEtcDir())
-	fmt.Printf("DC_CACHE_DIR=%s\n", getCacheDir())
-	fmt.Printf("DC_PLATFORM=%s\n", detectPlatform())
+	fmt.Printf("DCX_HOME=%s\n", getDCHome())
+	fmt.Printf("DCX_BIN_DIR=%s\n", getBinDir())
+	fmt.Printf("DCX_ETC_DIR=%s\n", getEtcDir())
+	fmt.Printf("DCX_CACHE_DIR=%s\n", getCacheDir())
+	fmt.Printf("DCX_PLATFORM=%s\n", detectPlatform())
 }
 
 func printConfigHelp() {
@@ -189,7 +189,7 @@ Available Keys:
   name           Project short name (DCX)
   full_name      Project full name
   repo           GitHub repository
-  home           DC_HOME path
+  home           DCX_HOME path
   bin            bin directory path
   etc            etc directory path
   cache          cache directory path

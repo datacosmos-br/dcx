@@ -7,8 +7,8 @@
 #===============================================================================
 
 # Prevent multiple sourcing
-[[ -n "${_DC_CONFIG_LOADED:-}" ]] && return 0
-declare -r _DC_CONFIG_LOADED=1
+[[ -n "${_DCX_CONFIG_LOADED:-}" ]] && return 0
+declare -r _DCX_CONFIG_LOADED=1
 
 #-------------------------------------------------------------------------------
 # config_get - Get a single value from config file

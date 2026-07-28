@@ -5,11 +5,50 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
-// findBinary locates a binary, checking bundled binaries first, then system PATH
+// oracleBinaries is the set of Oracle tools that should be searched in ORACLE_HOME/bin first
+var oracleBinaries = map[string]bool{
+	"sqlplus": true,
+	"rman":    true,
+	"expdp":   true,
+	"impdp":   true,
+	"srvctl":  true,
+	"crsctl":  true,
+	"asmcmd":  true,
+	"lsnrctl": true,
+	"dgmgrl":  true,
+}
+
+// isOracleBinary checks if the given binary name is an Oracle tool
+func isOracleBinary(name string) bool {
+	return oracleBinaries[name]
+}
+
+// findBinary locates a binary using the following search order:
+// For Oracle tools (sqlplus, rman, expdp, impdp, etc.):
+//  1. ORACLE_HOME/bin
+//  2. DCX_HOME/bin (bundled)
+//  3. System PATH
+//
+// For other tools:
+//  1. DCX_HOME/bin (platform-specific bundled)
+//  2. DCX_HOME/bin (generic bundled)
+//  3. System PATH
+//
 // Returns the full path to the binary or an error if not found
 func findBinary(name string) (string, error) {
+	// For Oracle binaries, check ORACLE_HOME/bin first
+	if isOracleBinary(name) {
+		if oracleHome := os.Getenv("ORACLE_HOME"); oracleHome != "" {
+			oracleBin := filepath.Join(oracleHome, "bin", name)
+			if isExecutable(oracleBin) {
+				return oracleBin, nil
+			}
+		}
+	}
+
 	binDir := getBinDir()
 	platform := detectPlatform()
 
@@ -111,7 +150,7 @@ func listBinaries() {
 		if err == nil {
 			pathDisplay = path
 			// Check if it's bundled or system
-			if filepath.HasPrefix(path, binDir) {
+			if strings.HasPrefix(path, binDir+string(filepath.Separator)) || path == binDir {
 				status = "bundled"
 			} else {
 				status = "system"

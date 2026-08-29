@@ -26,3 +26,10 @@ sync.sh
 
 # Claude local files
 .claude/
+
+# Session/runtime artifacts (auto-generated, should not be committed)
+AGENTS.md
+CLAUDE.md
+.mise.toml
+.serena/
+mise.lock

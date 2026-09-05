@@ -8,6 +8,15 @@ source "$(dirname "${BASH_SOURCE[0]}")/test_helpers.sh"
 # Set DCX_HOME for tests
 export DCX_HOME="${LIB_DIR}/.."
 
+# lib/plugin.sh reads metadata via "${YQ:-yq}" (matching bin/dcx's own
+# resolution) rather than a bare `yq`, since a system-wide yq is not
+# guaranteed. Resolve it the same way bin/dcx and test_tools.sh do, from the
+# bundled dcx-go binary, so dc_plugin_info assertions exercise the real path.
+DCX_GO="${DCX_HOME}/bin/dcx-go"
+if [[ -x "$DCX_GO" ]]; then
+    export YQ="$("$DCX_GO" binary find yq 2>/dev/null || echo "yq")"
+fi
+
 # Test plugin directory
 TEST_PLUGIN_DIR="/tmp/dc-test-plugin-$$"
 

@@ -1,9 +1,10 @@
-# Arquitetura Canônica do DCX: Kernel, Contratos e Taxonomia Corporativa
+# Arquitetura Canônica do DCX: Kernel, Contratos, Padrões Semânticos e Taxonomia
 
 > **Status:** Normativo e Canônico  
 > **Versão:** 1.0.0  
 > **Padrões de Mercado:** Platform Engineering (CNCF), Clean Architecture & Hexagonal (Ports & Adapters), Domain-Driven Design (DDD), 12-Factor App, Zero Trust Security  
-> **Repositório:** `datacosmos-br/dcx`
+> **Repositório:** `datacosmos-br/dcx`  
+> **Guia de Implementação Prática:** [docs/guides/plugging-and-extending-capabilities.md](../guides/plugging-and-extending-capabilities.md)
 
 ---
 
@@ -41,23 +42,71 @@ O **DCX** é o **Kernel de Execução e Host de Control Plane** da Datacosmos. C
 
 ---
 
-## 2. Taxonomia de Mercado das Capacidades Tecnológicas
+## 2. Padrões Semânticos Invioláveis
 
-Para evitar sobreposição e colcha de retalhos, todos os plugins e capacidades tecnológicas são agrupados estritamente pelas categorias de mercado:
+Todo código, contrato e manifesto no ecossistema Datacosmos deve seguir cinco padrões semânticos:
 
-| Categoria CNCF / Mercado | Identificador | Tecnologias Encapsuladas | Contratos Fornecidos aos Projetos |
-|---|---|---|---|
-| **Enterprise RDBMS & Relational Plane** | `rdbms-oracle` | `flext-db-oracle`, `sqld360`, AWR, RMAN, Wallets | • Conexão e pooling gerenciados.<br>• Diagnóstico e otimização de plano de execução.<br>• Backup e restore determinístico. |
-| **Data Lake & Object Storage Plane** | `storage-lake` | Rclone, Google Drive (`gdrive:`), S3, Apache Arrow, Parquet Snappy | • Streaming de upload/download de objetos.<br>• Serialização colunar compactada Snappy.<br>• Auditoria de integridade com SHA256. |
-| **High-Throughput Analytical OLAP** | `olap-clickhouse` | Driver ClickHouse, Ingestion Pipelines | • Ingestão massiva em lotes (micro-batches).<br>• Consultas agregadas de tempo real. |
-| **Platform Delivery & GitOps Plane** | `gitops-infra` | Kubernetes API, ArgoCD REST, OCI CLI, Helm | • Sincronização de estado desejado de clusters.<br>• Execução de jobs efêmeros e cronjobs. |
-| **Work Management & Collaboration** | `work-management` | Jira Cloud REST v3, Confluence | • Transição automatizada de épicos e tarefas.<br>• Rastreabilidade de commits e evidências. |
+1. **Linguagem Ubíqua de Negócio (DDD):**
+   As portas de domínio expõem intenção de negócio (`FuelMovementPort`, `AuditStoragePort`), **nunca** detalhes de tecnologia (`SqlExecutor`, `RcloneUploader`).
+2. **Tipagem Estrutural Pura (`p.Port`):**
+   Contratos são definidos via `typing.Protocol` herdando de `p.Base`. Casos de uso e serviços nunca dependem de classes concretas de drivers.
+3. **Railway Oriented Programming (`r.Result[T]`):**
+   Fluxo de controle baseado no monad Result. Sucesso (`r.success`) ou erro semântico tipado (`r.failure`). Exceções de runtime não vazam para fora da fronteira dos adaptadores.
+4. **Modelos Declarativos Puros (`m.Model`):**
+   Modelos Pydantic v2 contêm apenas definições de dados e validadores de campo nativos. **Zero lógica de negócio ou métodos mutadores** dentro de modelos em `m`.
+5. **Self-Only Deltas (ADR-024):**
+   Nenhum componente declara dados sobre outro repositório. O manifesto declara apenas suas próprias capacidades, dependências e comandos.
 
 ---
 
-## 3. Especificação Semântica dos Contratos do DCX
+## 3. As 8 Áreas Arquiteturais do Ecossistema
 
-### 3.1 Contrato de Manifesto de Plugin (`plugin.yaml`)
+Para garantir modularidade e evitar colcha de retalhos, todas as capacidades e soluções são alocadas em **8 Áreas Especializadas**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│              ÁREA 8: BUSINESS DOMAINS & CLIENT SOLUTIONS                │
+│       • gruponos (Combustíveis & DW)  • algar (Telecom)  • raizen       │
+│       • dc-recon (Reconciliação)      • dcdoc (Docs)     • DataOP       │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │ Consumo via Portas de Domínio (DI)
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        ÁREAS DE TECNOLOGIA (MEIO)                       │
+│                                                                         │
+│  ÁREA 2: Data Integration & ELT (flext-meltano, Singer Taps/Targets)    │
+│  ÁREA 3: Enterprise Database & Performance (flext-db-oracle, sqld360)   │
+│  ÁREA 4: Object Storage & Columnar Lake (tech-storage, Parquet, GDrive) │
+│  ÁREA 5: Analytical & Fast OLAP (tech-clickhouse)                       │
+│  ÁREA 6: Platform Infrastructure & GitOps (tech-gitops, K8s, ArgoCD)    │
+│  ÁREA 7: Enterprise Work Tracking & Agile (tech-jira REST v3)           │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │ Sustentação de Runtime
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│             ÁREA 1: CORE RUNTIME & EXECUTION (KERNEL DCX)               │
+│    • CLI Host Nativo (Go)              • Cofre AES-256 (dcx cred)       │
+│    • Supervisor de Processos           • Toolchain Hermético tools.yaml │
+│    • Preflight & Health Inspection     • Container DI (flext-core)      │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+| Área Arquitetural | Escopo | Componentes Principais | Contratos Providos |
+|---|---|---|---|
+| **Área 1: Core Runtime (Kernel)** | Fundação de Sistema | `dcx` (Go), `flext-core` | CLI runner, cofre AES-256 PBKDF2, `tools.yaml`, Result Monad, DI Container. |
+| **Área 2: Data Integration (ELT)** | Extração e Carga | `flext-meltano`, `flext-tap-*`, `flext-target-*`, `flext-dbt-*` | Bases Singer Tap, Singer Target e modelos de transformação dbt. |
+| **Área 3: Enterprise Database** | Banco Relacional | `flext-db-oracle`, `sqld360`, AWR, RMAN, Wallets | Pooling de conexão, tuning SQL, diagnósticos e automação RMAN. |
+| **Área 4: Storage & Data Lake** | Armazenamento de Objetos | `tech-storage`, Rclone (`gdrive:`), S3, Apache Arrow, Parquet | Streaming de leitura/escrita Parquet Snappy, sync em nuvem. |
+| **Área 5: Analytical OLAP** | Ingestão e Agregação | `tech-clickhouse` | Conector ClickHouse de alto throughput e consultas analíticas. |
+| **Área 6: Platform & GitOps** | Infraestrutura | `tech-gitops`, Kubernetes API, ArgoCD, OCI CLI, Helm | Sincronização de manifests, jobs de cluster e gestão OCI. |
+| **Área 7: Work Tracking** | Gestão de Tarefas | `tech-jira`, Jira REST v3, JQL | Transição de status, vínculo de épicos e extração de métricas. |
+| **Área 8: Business Domains** | Regras de Clientes | `gruponos`, `algar`, `raizen`, `dc-recon`, `dcdoc` | Casos de uso de negócio, auditoria contábil, conciliação e relatórios. |
+
+---
+
+## 4. Especificação Semântica dos Contratos do DCX
+
+### 4.1 Contrato de Manifesto de Plugin (`plugin.yaml`)
 Todo plugin tecnológico que se integra ao DCX deve implementar o manifesto declarativo canônico:
 
 ```yaml
@@ -97,7 +146,7 @@ lifecycle:
   teardown: "scripts/teardown.sh"
 ```
 
-### 3.2 Contrato de Segurança de Segredos (`dcx cred` - Secret Management)
+### 4.2 Contrato de Segurança de Segredos (`dcx cred` - Secret Management)
 Seguindo o padrão **Zero Trust** e **12-Factor App**:
 1. **Algoritmo de Criptografia:** AES-256-GCM com chave derivada via PBKDF2 (100.000 iterações com SHA-256 e salt criptográfico).
 2. **Ciclo de Vida em Memória:**
@@ -105,31 +154,26 @@ Seguindo o padrão **Zero Trust** e **12-Factor App**:
    - Proibição absoluta de exportação em arquivos `.env` em plain-text ou passagem via flags de linha de comando (`ps aux` visível).
    - Injeção em processos filhos via **Argumentos Posicionais Isolados** em Go (`exec.Command("bash", "-c", script, "_", secret)`) ou **Pipes Seguros de Memória** (`stdin` direto fechado após leitura).
 
-### 3.3 Contrato de Toolchain Hermético (`etc/tools.yaml`)
+### 4.3 Contrato de Toolchain Hermético (`etc/tools.yaml`)
 O DCX garante que os nós de execução possuam ferramentas idênticas e auditadas:
 - Cada ferramenta declara seu repositório de download e **checksum SHA-256 estrito por plataforma**.
 - O extrator de arquivos implementa proteção contra **Zip Bomb** e **Tar Path Traversal** com teto de extração em bytes via `io.CopyN`.
 
 ---
 
-## 4. O Fluxo de Consumo pelas Camadas Mais Altas (Projetos & Clientes)
+## 5. Como Plugar e Executar: O Fluxo de Consumo pelas Camadas Superiores
 
-Para reduzir a complexidade nas camadas mais altas:
-1. **O Cliente não sabe detalhes de ferramentas:** O projeto `gruponos` apenas declara que necessita da capacidade `rdbms-oracle` e `storage-lake`.
-2. **O DCX resolve o ambiente e a segurança:**
-   ```bash
-   # Execução orquestrada pelo DCX
-   dcx run gruponos reconcile --data 2026-01-31
-   ```
-3. **O Runtime do DCX:**
-   - Executa os preflight checks do plugin `tech-oracle` e do `gruponos`.
-   - Recupera a credencial do cofre `dcx cred` de forma segura.
-   - Fornece o contexto de execução limpo para o container DI do Python (`flext-core`).
-   - O caso de uso do Grupo Nós executa sua regra pura, emitindo o resultado com sucesso e sem falhas silenciosas.
+O guia passo a passo completo com código fonte encontra-se em:  
+👉 **[Guia Prático: Como Plugar Tecnologias e Fazer Funcionar](../guides/plugging-and-extending-capabilities.md)**
+
+Resumo do fluxo de 3 passos:
+1. **Definição da Porta de Domínio no Cliente:** O cliente declara o que precisa via `typing.Protocol` sem menção a SQL ou Rclone.
+2. **Implementação do Adaptador Fino:** O adaptador conecta a porta de domínio à tecnologia compartilhada (`flext-db-oracle` ou `tech-storage`).
+3. **Injeção na Composition Root (`api.py`):** O container DI monta o grafo e expõe o caso de uso, executável via `dcx run <cliente> <comando>`.
 
 ---
 
-## 5. Matriz de Conformidade Arquitetural
+## 6. Matriz de Conformidade Arquitetural
 
 | Princípio | Implementação no DCX | Verificação Decisiva |
 |---|---|---|

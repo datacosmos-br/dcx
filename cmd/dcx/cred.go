@@ -106,8 +106,8 @@ func credSet(args []string) {
 		os.Exit(1)
 	}
 
-	// Execute shell command
-	output, err := runCredCommand(fmt.Sprintf("cred_set %q %q", key, value))
+	// Execute shell command safely without string interpolation
+	output, err := runCredCommand("cred_set", key, value)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, output)
 		os.Exit(1)
@@ -125,8 +125,8 @@ func credGet(args []string) {
 
 	key := args[0]
 
-	// Execute shell command
-	output, err := runCredCommand(fmt.Sprintf("cred_get %q", key))
+	// Execute shell command safely without string interpolation
+	output, err := runCredCommand("cred_get", key)
 	if err != nil {
 		// Don't output the error message, just exit with status 1
 		// The shell function already printed the error
@@ -147,7 +147,7 @@ func credList(args []string) {
 		}
 	}
 
-	// Execute shell command
+	// Execute shell command safely without string interpolation
 	output, err := runCredCommand("cred_list")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, output)
@@ -205,8 +205,8 @@ func credDelete(args []string) {
 		}
 	}
 
-	// Execute shell command
-	output, err := runCredCommand(fmt.Sprintf("cred_delete %q", key))
+	// Execute shell command safely without string interpolation
+	output, err := runCredCommand("cred_delete", key)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, output)
 		os.Exit(1)
@@ -235,16 +235,14 @@ func credExport(args []string) {
 		}
 	}
 
-	// Build command
-	var cmd string
+	// Execute shell command safely without string interpolation
+	var output string
+	var err error
 	if prefix != "" {
-		cmd = fmt.Sprintf("cred_export %q", prefix)
+		output, err = runCredCommand("cred_export", prefix)
 	} else {
-		cmd = "cred_export"
+		output, err = runCredCommand("cred_export")
 	}
-
-	// Execute shell command
-	output, err := runCredCommand(cmd)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, output)
 		os.Exit(1)
@@ -258,8 +256,8 @@ func credExport(args []string) {
 	}
 }
 
-// runCredCommand executes a cred.sh function and returns output
-func runCredCommand(funcCall string) (string, error) {
+// runCredCommand executes a cred.sh function safely with positional arguments
+func runCredCommand(funcName string, funcArgs ...string) (string, error) {
 	libDir := getLibDir()
 	credShPath := filepath.Join(libDir, "cred.sh")
 
@@ -268,11 +266,11 @@ func runCredCommand(funcCall string) (string, error) {
 		return "", fmt.Errorf("credential library not found: %s\nEnsure DCX_HOME is set correctly", credShPath)
 	}
 
-	// Build bash command that sources cred.sh and calls the function
-	bashCmd := fmt.Sprintf("source %q && %s", credShPath, funcCall)
-
-	// Execute with bash
-	cmd := exec.Command("bash", "-c", bashCmd)
+	// Execute with bash using positional arguments to eliminate shell injection vulnerabilities.
+	// $1 = library path, $2 = function name, "${@:3}" = function arguments
+	bashScript := `source "$1" && "$2" "${@:3}"`
+	execArgs := append([]string{"-c", bashScript, "_", credShPath, funcName}, funcArgs...)
+	cmd := exec.Command("bash", execArgs...)
 
 	// Set DCX_HOME in environment
 	cmd.Env = append(os.Environ(), fmt.Sprintf("DCX_HOME=%s", getDCHome()))

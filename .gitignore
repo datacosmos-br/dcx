@@ -60,7 +60,6 @@ bin/
 # ===========================================
 # Beads Issue Tracking (local only)
 # ===========================================
-.beads/
 
 # ===========================================
 # Plugin Repositories (separate git repos)
@@ -79,3 +78,7 @@ CODEX.md
 AIDER.md
 CLAUDE.md
 *.local.md
+
+# Gas City
+.beads/*
+!.beads/identity.toml

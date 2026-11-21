@@ -151,7 +151,7 @@ test: ## Roda testes
 	$(INFO) "Rodando testes..."
 	@if [ -f tests/run_all_tests.sh ]; then \
 		chmod +x tests/run_all_tests.sh tests/test_*.sh 2>/dev/null || true; \
-		./tests/run_all_tests.sh; \
+		./tests/run_all_tests.sh < /dev/null; \
 	else \
 		printf "$(C_YELLOW)!$(C_RESET) tests/run_all_tests.sh não encontrado\n"; \
 	fi

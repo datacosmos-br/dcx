@@ -95,7 +95,11 @@ dc_plugin_info() {
     if [[ -z "$field" ]]; then
         cat "$plugin_file"
     else
-        yq -r ".$field // \"\"" "$plugin_file" 2>/dev/null
+        # Why: use the resolved binary ($YQ, set by bin/dcx via `dcx-go binary
+        # find yq`) like every other lib/*.sh caller (see lib/logging.sh,
+        # lib/plugin.sh gum_bin) instead of a bare `yq` that only works when a
+        # system-wide yq happens to be on PATH.
+        "${YQ:-yq}" -r ".$field // \"\"" "$plugin_file" 2>/dev/null
     fi
 }
 
@@ -142,7 +146,7 @@ dc_load_plugin() {
                 echo "Plugin '$plugin_name' requires command: $cmd" >&2
                 return 1
             fi
-        done < <(echo "$requires_cmds" | yq -r '.[]' 2>/dev/null)
+        done < <(echo "$requires_cmds" | "${YQ:-yq}" -r '.[]' 2>/dev/null)
     fi
 
     # Add plugin lib to path
